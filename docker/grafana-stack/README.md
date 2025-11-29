@@ -17,22 +17,39 @@ Monitoring stack with Prometheus, Loki, Grafana, Alertmanager, and cAdvisor.
 ```
 config/
 ├── prometheus.yml        # Scrape targets and alerting config
-├── alertmanager.yml.tmpl # Alert routing (template with env vars)
 ├── loki-config.yml       # Loki storage and retention settings
 └── promtail-config.yml   # Log collection config (for reference)
 ```
 
 Note: `promtail-config.yml` is included for reference. Promtail runs separately on each host that sends logs to Loki.
 
-## Environment Variables
+## Private Configuration
 
-Create `.env` file at `/volume1/homelab/private/docker/grafana-stack/.env`:
+Alertmanager config contains SMTP credentials and must be created manually in your private directory.
 
-```
-SMTP_FROM=your-email@example.com
-SMTP_USERNAME=your-email@example.com
-SMTP_PASSWORD=your-app-password
-ALERT_EMAIL=your-email@example.com
+Create `~/homelab-private/docker/grafana-stack/alertmanager.yml` using this template:
+
+```yaml
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'your-email@example.com'
+  smtp_auth_username: 'your-email@example.com'
+  smtp_auth_password: 'your-app-password'
+  smtp_require_tls: true
+
+route:
+  receiver: email-team
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+
+receivers:
+  - name: email-team
+    email_configs:
+      - to: 'your-email@example.com'
+        send_resolved: true
 ```
 
 ## Storage
@@ -47,11 +64,11 @@ All persistent data stored on Synology via NFS:
 ## Deployment
 
 ```bash
-docker compose --env-file /volume1/homelab/private/docker/grafana-stack/.env up -d
+cd ~/homelab/docker/grafana-stack
+docker compose up -d
 ```
 
 ## Notes
 
-- Alertmanager uses `envsubst` at startup to inject secrets into its config
 - Loki retention is set to 7 days
 - Prometheus scrape interval is 15 seconds

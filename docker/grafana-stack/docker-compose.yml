@@ -19,19 +19,16 @@ services:
     restart: unless-stopped
     ports:
       - "9093:9093"
-    environment:
-      - SMTP_FROM=${SMTP_FROM}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - ALERT_EMAIL=${ALERT_EMAIL}
     volumes:
-      - ./config/alertmanager.yml.tmpl:/etc/alertmanager/alertmanager.yml.tmpl:ro
-      - alertmanager_data:/alertmanager
-    entrypoint: ["/bin/sh", "-c"]
+      - /home/louie/homelab-private/docker/grafana-stack/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - type: volume
+        source: alertmanager_data
+        target: /alertmanager
+        volume:
+          nocopy: true
     command:
-      - |
-        cat /etc/alertmanager/alertmanager.yml.tmpl | envsubst > /etc/alertmanager/alertmanager.yml
-        exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
 
   loki:
     image: grafana/loki:latest
@@ -82,23 +79,23 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4.2,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
       device: ":/volume1/Grafana-Alertmanager"
   prometheus_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4.2,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
       device: ":/volume1/Grafana-Prometheus"
   loki_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4.2,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
       device: ":/volume1/Grafana-Loki"
   grafana_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4.2,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
       device: ":/volume1/Grafana-Data"
