@@ -5,7 +5,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /home/louie/homelab/docker/grafana-stack/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - type: volume
         source: prometheus_data
         target: /prometheus
@@ -37,7 +37,7 @@ services:
       - "3100:3100"
     command: "-config.file=/etc/loki/config.yml"
     volumes:
-      - ./config/loki-config.yml:/etc/loki/config.yml:ro
+      - /home/louie/homelab/docker/grafana-stack/config/loki-config.yml:/etc/loki/config.yml:ro
       - type: volume
         source: loki_data
         target: /loki
