@@ -1,0 +1,149 @@
+---
+- name: Display Longhorn installation information
+  ansible.builtin.debug:
+    msg: "Installing Longhorn {{ longhorn_version }}"
+
+- name: Create Longhorn namespace
+  ansible.builtin.shell: |
+    kubectl create namespace longhorn-system --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Download Longhorn manifest
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml"
+    dest: /tmp/longhorn.yaml
+    mode: '0644'
+
+- name: Apply Longhorn manifest
+  ansible.builtin.shell: |
+    kubectl apply -f /tmp/longhorn.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for Longhorn manager to be ready
+  ansible.builtin.shell: |
+    kubectl wait --namespace longhorn-system \
+      --for=condition=ready pod \
+      --selector=app=longhorn-manager \
+      --timeout=600s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 30
+
+- name: Wait for Longhorn driver deployer to complete
+  ansible.builtin.shell: |
+    kubectl wait --namespace longhorn-system \
+      --for=condition=ready pod \
+      --selector=app=longhorn-driver-deployer \
+      --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 10
+
+- name: Wait for Longhorn UI to be ready
+  ansible.builtin.shell: |
+    kubectl wait --namespace longhorn-system \
+      --for=condition=ready pod \
+      --selector=app=longhorn-ui \
+      --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 10
+
+- name: Run Longhorn environment check on all nodes
+  ansible.builtin.shell: |
+    curl -sSfL https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/scripts/environment_check.sh | bash
+  register: longhorn_check
+  changed_when: false
+  failed_when: false
+
+# NOTE: Use FQDN hostnames (hostname | lower) for node labels
+- name: Label nodes for Longhorn disk
+  ansible.builtin.shell: |
+    kubectl label node {{ hostvars[item]['hostname'] | lower }} node.longhorn.io/create-default-disk=true --overwrite
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  loop: "{{ groups['k3s_cluster'] }}"
+  register: label_result
+  failed_when: false
+
+- name: Display label results
+  ansible.builtin.debug:
+    msg: "Node labeling completed"
+
+- name: Remove default annotation from local-path StorageClass
+  ansible.builtin.shell: |
+    kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  ignore_errors: yes
+
+- name: Set Longhorn as default StorageClass
+  ansible.builtin.shell: |
+    kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  ignore_errors: yes
+
+- name: Create Longhorn UI LoadBalancer service
+  ansible.builtin.copy:
+    dest: /tmp/longhorn-ui-lb.yaml
+    content: |
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: longhorn-frontend-lb
+        namespace: longhorn-system
+      spec:
+        type: LoadBalancer
+        selector:
+          app: longhorn-ui
+        ports:
+          - name: http
+            port: 80
+            targetPort: 8000
+            protocol: TCP
+    mode: '0644'
+
+- name: Apply Longhorn UI LoadBalancer service
+  ansible.builtin.shell: |
+    kubectl apply -f /tmp/longhorn-ui-lb.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Display Longhorn pods
+  ansible.builtin.shell: kubectl get pods -n longhorn-system -o wide
+  register: longhorn_pods
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Show Longhorn pods
+  ansible.builtin.debug:
+    msg: "{{ longhorn_pods.stdout_lines }}"
+
+- name: Get Longhorn UI LoadBalancer IP
+  ansible.builtin.shell: |
+    kubectl get svc longhorn-frontend-lb -n longhorn-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: longhorn_lb_ip
+  until: longhorn_lb_ip.stdout != ""
+  retries: 30
+  delay: 10
+
+- name: Set Longhorn UI IP fact
+  ansible.builtin.set_fact:
+    longhorn_ui_ip: "{{ longhorn_lb_ip.stdout }}"
+    cacheable: yes
+
+- name: Longhorn installation complete
+  ansible.builtin.debug:
+    msg: |
+      Longhorn has been installed successfully!
+      Version: {{ longhorn_version }}
+      Longhorn UI available at: http://{{ longhorn_lb_ip.stdout }}

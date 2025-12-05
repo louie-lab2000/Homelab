@@ -1,0 +1,18 @@
+docker exec --user www-data nextcloud php occ config:system:set maintenance_window_start --type=integer --value=1
+
+docker exec --user www-data nextcloud php occ maintenance:repair --include-expensive
+
+docker exec --user www-data nextcloud php occ db:add-missing-indices
+
+docker exec --user www-data nextcloud php occ config:system:set default_phone_region --value=“US”
+
+docker exec --user www-data nextcloud truncate /var/www/html/data/nextcloud.log --size 0
+
+
+docker exec --user www-data nextcloud truncate /mnt/ncdata/nextcloud.log --size 0
+
+docker exec --user www-data nextcloud php occ files:scan --generate-metadata --all
+
+docker exec --user www-data nextcloud php occ files:repair-tree 
+
+docker exec --user www-data nextcloud php occ  files:cleanup

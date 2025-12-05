@@ -1,0 +1,29 @@
+[proxmox]
+pve-01.louielab.cc ansible_user=root
+pve-02.louielab.cc ansible_user=root
+pve-03.louielab.cc ansible_user=root
+#pve-04.louielab.cc ansible_user=root
+
+
+[webservers]
+docker-int.louielab.cc ansible_user=ansible
+#docker-ext.louielab.cc ansible_user=ansible
+blog2.louielab.cc ansible_user=ansible
+www.leeannperugini.com ansible_user=ansible
+test.leeannperugini.com ansible_user=ansible
+forum.louiecloud.com ansible_user=ansible
+#Master-1.louielab.cc ansible_user=ansible
+#Master-2.louielab.cc ansible_user=ansible
+#Master-3.louielab.cc ansible_user=ansible
+#Worker-1.louielab.cc ansible_user=ansible
+#Worker-2.louielab.cc ansible_user=ansible
+#Admin.louielab.cc ansible_user=ansible
+docker-edge.louielab.cc ansible_user=ansible
+
+[lxc_containers]
+Cloudflared.louielab.cc ansible_user=root
+Crowdsec.louielab.cc ansible_user=root 
+pihole.louielab.cc ansible_user=root
+
+[proxmox_edge]
+pve-10.louielab.cc ansible_user=root

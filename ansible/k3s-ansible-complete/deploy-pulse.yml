@@ -1,0 +1,233 @@
+---
+# =============================================================================
+# Deploy Pulse - Proxmox Monitoring Dashboard
+# =============================================================================
+# Deploys Pulse to monitor your Proxmox infrastructure
+#
+# Prerequisites:
+#   - K3s cluster running
+#   - Firewall rule: K3s nodes (192.168.50.41-43) → Proxmox (192.168.10.x:8006)
+#
+# Usage: ansible-playbook deploy-pulse.yml
+# =============================================================================
+
+- name: "Deploy Pulse Proxmox Monitor"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  
+  vars:
+    pulse_namespace: pulse
+    pulse_loadbalancer_ip: "192.168.50.62"
+    pulse_storage_size: 1Gi
+    pulse_storage_class: longhorn
+    # Scan your Proxmox management VLAN for auto-discovery
+    proxmox_discovery_subnet: "192.168.10.0/24"
+
+  tasks:
+    # =========================================================================
+    # Create Namespace
+    # =========================================================================
+    
+    - name: Create Pulse namespace
+      ansible.builtin.shell: |
+        kubectl create namespace {{ pulse_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Create PVC for persistent data
+    # =========================================================================
+
+    - name: Create Pulse PVC
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: pulse-data
+          namespace: {{ pulse_namespace }}
+        spec:
+          storageClassName: {{ pulse_storage_class }}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ pulse_storage_size }}
+        EOF
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for PVC to bind
+      ansible.builtin.shell: |
+        kubectl wait --for=jsonpath='{.status.phase}'=Bound pvc/pulse-data -n {{ pulse_namespace }} --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Deploy Pulse
+    # =========================================================================
+
+    - name: Deploy Pulse
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: pulse
+          namespace: {{ pulse_namespace }}
+          labels:
+            app: pulse
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: pulse
+          template:
+            metadata:
+              labels:
+                app: pulse
+            spec:
+              containers:
+                - name: pulse
+                  image: rcourtman/pulse:latest
+                  ports:
+                    - containerPort: 7655
+                      name: http
+                  env:
+                    - name: DISCOVERY_SUBNET
+                      value: "{{ proxmox_discovery_subnet }}"
+                  volumeMounts:
+                    - name: pulse-data
+                      mountPath: /data
+                  resources:
+                    requests:
+                      memory: "128Mi"
+                      cpu: "100m"
+                    limits:
+                      memory: "512Mi"
+                      cpu: "500m"
+                  livenessProbe:
+                    httpGet:
+                      path: /api/health
+                      port: 7655
+                    initialDelaySeconds: 10
+                    periodSeconds: 30
+                  readinessProbe:
+                    httpGet:
+                      path: /api/health
+                      port: 7655
+                    initialDelaySeconds: 5
+                    periodSeconds: 10
+              volumes:
+                - name: pulse-data
+                  persistentVolumeClaim:
+                    claimName: pulse-data
+        EOF
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Create LoadBalancer Service
+    # =========================================================================
+
+    - name: Create Pulse LoadBalancer Service
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: pulse
+          namespace: {{ pulse_namespace }}
+          labels:
+            app: pulse
+        spec:
+          type: LoadBalancer
+          loadBalancerIP: {{ pulse_loadbalancer_ip }}
+          ports:
+            - port: 80
+              targetPort: 7655
+              protocol: TCP
+              name: http
+          selector:
+            app: pulse
+        EOF
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Wait for deployment
+    # =========================================================================
+
+    - name: Wait for Pulse deployment to be ready
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/pulse -n {{ pulse_namespace }} --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for LoadBalancer IP assignment
+      ansible.builtin.shell: |
+        kubectl get svc pulse -n {{ pulse_namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: lb_ip
+      until: lb_ip.stdout != ""
+      retries: 12
+      delay: 5
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get Pulse pod status
+      ansible.builtin.shell: kubectl get pods -n {{ pulse_namespace }} -o wide
+      register: pulse_pods
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display Pulse pods
+      ansible.builtin.debug:
+        msg: "{{ pulse_pods.stdout_lines }}"
+
+    - name: Get Service status
+      ansible.builtin.shell: kubectl get svc -n {{ pulse_namespace }}
+      register: pulse_svc
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display Service
+      ansible.builtin.debug:
+        msg: "{{ pulse_svc.stdout_lines }}"
+
+    # =========================================================================
+    # Summary
+    # =========================================================================
+
+    - name: Deployment complete
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          Pulse Deployment Complete!
+          ═══════════════════════════════════════════════════════════════
+          
+          URL: http://{{ pulse_loadbalancer_ip }}
+          
+          Next Steps:
+          1. Open http://{{ pulse_loadbalancer_ip }} in your browser
+          2. Complete the security setup wizard
+          3. Pulse will auto-discover Proxmox nodes on {{ proxmox_discovery_subnet }}
+          4. Use "Setup Script" button to configure each node
+          
+          Optional: Add to NPM later for HTTPS:
+            - Domain: pulse.louielab.cc
+            - Forward to: {{ pulse_loadbalancer_ip }}:80
+          
+          Namespace:     {{ pulse_namespace }}
+          Storage:       {{ pulse_storage_size }} on {{ pulse_storage_class }}
+          Discovery:     {{ proxmox_discovery_subnet }}
+          LoadBalancer:  {{ pulse_loadbalancer_ip }}
+          
+          Commands:
+            kubectl get pods -n {{ pulse_namespace }}
+            kubectl get svc -n {{ pulse_namespace }}
+            kubectl logs -n {{ pulse_namespace }} -l app=pulse -f
+          
+          ═══════════════════════════════════════════════════════════════

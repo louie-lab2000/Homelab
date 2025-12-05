@@ -1,0 +1,178 @@
+---
+# =============================================================================
+# Reset K3s Cluster - DESTRUCTIVE!
+# This will completely remove K3s and all data from all nodes
+# Usage: ansible-playbook reset.yml
+# =============================================================================
+
+- name: "RESET: Remove K3s from all nodes"
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  any_errors_fatal: false
+  
+  vars_prompt:
+    - name: confirm_reset
+      prompt: |
+        
+        ╔══════════════════════════════════════════════════════════════════════╗
+        ║                           ⚠️  WARNING ⚠️                             ║
+        ╠══════════════════════════════════════════════════════════════════════╣
+        ║  This will COMPLETELY DESTROY your K3s cluster!                      ║
+        ║  All workloads, data, and configurations will be LOST!               ║
+        ║                                                                      ║
+        ║  Type 'yes-destroy-my-cluster' to confirm                            ║
+        ╚══════════════════════════════════════════════════════════════════════╝
+      private: no
+
+  tasks:
+    - name: Verify confirmation
+      ansible.builtin.fail:
+        msg: "Reset cancelled. You must type 'yes-destroy-my-cluster' to proceed."
+      when: confirm_reset != 'yes-destroy-my-cluster'
+      run_once: true
+
+    - name: Display reset information
+      ansible.builtin.debug:
+        msg: "Resetting {{ inventory_hostname }} ({{ ansible_host }})"
+
+    - name: Check if K3s service exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/k3s.service
+      register: k3s_service
+
+    - name: Stop K3s service
+      ansible.builtin.systemd:
+        name: k3s
+        state: stopped
+        enabled: no
+      when: k3s_service.stat.exists
+      ignore_errors: yes
+
+    - name: Check for K3s uninstall script
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: k3s_uninstall
+
+    - name: Run K3s uninstall script
+      ansible.builtin.shell: /usr/local/bin/k3s-uninstall.sh
+      when: k3s_uninstall.stat.exists
+      ignore_errors: yes
+
+    - name: Remove K3s directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/rancher
+        - /var/lib/rancher
+        - /var/lib/kubelet
+        - /var/lib/cni
+        - /var/log/containers
+        - /var/log/pods
+        - /run/k3s
+        - /run/flannel
+        - /etc/cni
+
+    - name: Remove kubeconfig
+      ansible.builtin.file:
+        path: /home/ansible/.kube
+        state: absent
+
+    - name: Remove CNI network interfaces
+      ansible.builtin.shell: |
+        ip link delete cni0 2>/dev/null || true
+        ip link delete flannel.1 2>/dev/null || true
+        ip link delete kube-ipvs0 2>/dev/null || true
+      ignore_errors: yes
+
+    - name: Flush iptables rules
+      ansible.builtin.shell: |
+        iptables -F
+        iptables -X
+        iptables -t nat -F
+        iptables -t nat -X
+        iptables -t mangle -F
+        iptables -t mangle -X
+        iptables -P INPUT ACCEPT
+        iptables -P FORWARD ACCEPT
+        iptables -P OUTPUT ACCEPT
+      ignore_errors: yes
+
+    - name: Unmount Longhorn disk
+      ansible.posix.mount:
+        path: "{{ longhorn_mount_point }}"
+        state: unmounted
+      ignore_errors: yes
+
+    - name: Remove Longhorn fstab entry
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: ".*{{ longhorn_mount_point }}.*"
+        state: absent
+      ignore_errors: yes
+
+    # Auto-detect the Longhorn disk (same logic as longhorn-prep)
+    - name: Get disk sizes for reset cleanup
+      ansible.builtin.shell: |
+        lsblk -b -d -n -o NAME,SIZE,TYPE | grep disk | while read name size type; do
+          echo "$name:$size"
+        done
+      register: disk_sizes_raw
+      changed_when: false
+
+    - name: Find Longhorn disk for cleanup
+      ansible.builtin.set_fact:
+        detected_longhorn_disk: >-
+          {%- set target_bytes = longhorn_disk_size_gb | int * 1024 * 1024 * 1024 -%}
+          {%- set tolerance = 0.10 -%}
+          {%- set min_size = (target_bytes * (1 - tolerance)) | int -%}
+          {%- set max_size = (target_bytes * (1 + tolerance)) | int -%}
+          {%- set ns = namespace(found='') -%}
+          {%- for line in disk_sizes_raw.stdout_lines -%}
+            {%- set parts = line.split(':') -%}
+            {%- if parts | length == 2 -%}
+              {%- set disk_name = parts[0] -%}
+              {%- set disk_size = parts[1] | int -%}
+              {%- if disk_size >= min_size and disk_size <= max_size -%}
+                {%- set ns.found = '/dev/' ~ disk_name -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ ns.found }}
+
+    - name: Set Longhorn disk for cleanup
+      ansible.builtin.set_fact:
+        longhorn_disk: "{{ detected_longhorn_disk if detected_longhorn_disk else longhorn_disk_fallback }}"
+
+    - name: Display disk to be wiped
+      ansible.builtin.debug:
+        msg: "Will wipe Longhorn disk: {{ longhorn_disk }}"
+
+    - name: Wipe Longhorn disk filesystem (DESTRUCTIVE)
+      ansible.builtin.shell: |
+        wipefs -a {{ longhorn_disk }}1 2>/dev/null || true
+        wipefs -a {{ longhorn_disk }} 2>/dev/null || true
+      ignore_errors: yes
+
+    - name: Remove temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/k3s-install.sh
+        - /tmp/k3s_token
+        - /tmp/longhorn.yaml
+        - /tmp/metallb-native.yaml
+        - /tmp/longhorn-ui-lb.yaml
+
+    - name: Reset complete
+      ansible.builtin.debug:
+        msg: |
+          
+          ╔══════════════════════════════════════════════════════════════════════╗
+          ║  Reset complete on {{ inventory_hostname }}!                          
+          ║  The node is now clean and ready for reinstallation.                  
+          ║                                                                      
+          ║  To reinstall, run: ansible-playbook site.yml                        
+          ╚══════════════════════════════════════════════════════════════════════╝

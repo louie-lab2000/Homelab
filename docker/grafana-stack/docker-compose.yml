@@ -5,7 +5,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - /home/louie/homelab/docker/grafana-stack/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /home/louie/grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - type: volume
         source: prometheus_data
         target: /prometheus
@@ -20,7 +20,7 @@ services:
     ports:
       - "9093:9093"
     volumes:
-      - /home/louie/homelab-private/docker/grafana-stack/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - /home/louie/grafana/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - type: volume
         source: alertmanager_data
         target: /alertmanager
@@ -37,7 +37,7 @@ services:
       - "3100:3100"
     command: "-config.file=/etc/loki/config.yml"
     volumes:
-      - /home/louie/homelab/docker/grafana-stack/config/loki-config.yml:/etc/loki/config.yml:ro
+      - /home/louie/grafana/loki-config.yml:/etc/loki/config.yml:ro
       - type: volume
         source: loki_data
         target: /loki

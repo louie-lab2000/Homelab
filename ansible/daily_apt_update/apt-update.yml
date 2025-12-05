@@ -1,0 +1,20 @@
+---
+- hosts: all
+
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Perform a dist-upgrade.
+      ansible.builtin.apt:
+        upgrade: dist
+        update_cache: yes
+
+- hosts: proxmox
+
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Reboot machine
+      ansible.builtin.reboot:
+        reboot_timeout: 360
+

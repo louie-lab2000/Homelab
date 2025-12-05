@@ -1,0 +1,153 @@
+---
+# =============================================================================
+# Admin Workstation Setup Playbook (Standalone)
+# =============================================================================
+# Sets up an admin machine with kubectl and helm to manage the K3s cluster
+#
+# Usage: ansible-playbook -i inventory.yml setup-admin.yml
+# =============================================================================
+
+- name: "Setup Admin Workstation"
+  hosts: admin
+  become: true
+  gather_facts: true
+  
+  vars:
+    admin_user: ansible
+    k3s_master: "192.168.50.41"
+  
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - jq
+        state: present
+        update_cache: yes
+
+    - name: Get latest kubectl version
+      ansible.builtin.shell: curl -L -s https://dl.k8s.io/release/stable.txt
+      register: kubectl_version
+      changed_when: false
+
+    - name: Display kubectl version to install
+      ansible.builtin.debug:
+        msg: "Installing kubectl {{ kubectl_version.stdout }}"
+
+    - name: Download kubectl
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version.stdout }}/bin/linux/amd64/kubectl"
+        dest: /tmp/kubectl
+        mode: '0755'
+
+    - name: Install kubectl to /usr/local/bin
+      ansible.builtin.copy:
+        src: /tmp/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+        remote_src: yes
+
+    - name: Verify kubectl installation
+      ansible.builtin.shell: kubectl version --client --output=yaml | head -5
+      register: kubectl_check
+      changed_when: false
+
+    - name: Display kubectl version
+      ansible.builtin.debug:
+        msg: "{{ kubectl_check.stdout_lines }}"
+
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Verify Helm installation
+      ansible.builtin.shell: helm version --short
+      register: helm_check
+      changed_when: false
+
+    - name: Display Helm version
+      ansible.builtin.debug:
+        msg: "Helm {{ helm_check.stdout }}"
+
+    - name: Create .kube directory for admin user
+      ansible.builtin.file:
+        path: "/home/{{ admin_user }}/.kube"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0755'
+
+    - name: Copy kubeconfig from K3s master
+      ansible.builtin.shell: |
+        scp -i /home/{{ admin_user }}/.ssh/ansible -o StrictHostKeyChecking=no {{ admin_user }}@{{ k3s_master }}:/home/{{ admin_user }}/.kube/config /home/{{ admin_user }}/.kube/config
+      become_user: "{{ admin_user }}"
+      args:
+        creates: "/home/{{ admin_user }}/.kube/config"
+
+    - name: Set kubeconfig permissions
+      ansible.builtin.file:
+        path: "/home/{{ admin_user }}/.kube/config"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0600'
+
+    - name: Add kubectl bash completion
+      ansible.builtin.lineinfile:
+        path: "/home/{{ admin_user }}/.bashrc"
+        line: 'source <(kubectl completion bash)'
+        state: present
+
+    - name: Add kubectl alias
+      ansible.builtin.lineinfile:
+        path: "/home/{{ admin_user }}/.bashrc"
+        line: 'alias k=kubectl'
+        state: present
+
+    - name: Add alias completion
+      ansible.builtin.lineinfile:
+        path: "/home/{{ admin_user }}/.bashrc"
+        line: 'complete -o default -F __start_kubectl k'
+        state: present
+
+    - name: Add helm bash completion
+      ansible.builtin.lineinfile:
+        path: "/home/{{ admin_user }}/.bashrc"
+        line: 'source <(helm completion bash)'
+        state: present
+
+    - name: Test cluster access
+      ansible.builtin.shell: kubectl get nodes
+      become_user: "{{ admin_user }}"
+      register: cluster_test
+      environment:
+        HOME: "/home/{{ admin_user }}"
+
+    - name: Display cluster access test
+      ansible.builtin.debug:
+        msg: "{{ cluster_test.stdout_lines }}"
+
+    - name: Setup complete
+      ansible.builtin.debug:
+        msg: |
+          
+          ╔══════════════════════════════════════════════════════════════════════╗
+          ║              ADMIN WORKSTATION SETUP COMPLETE!                       ║
+          ╠══════════════════════════════════════════════════════════════════════╣
+          ║  kubectl: {{ kubectl_version.stdout }}
+          ║  helm:    {{ helm_check.stdout }}
+          ║  
+          ║  Kubeconfig: /home/{{ admin_user }}/.kube/config
+          ║  
+          ║  Aliases added to .bashrc:
+          ║    k = kubectl
+          ║  
+          ║  SSH to admin and run:
+          ║    kubectl get nodes
+          ║    kubectl get pods -A
+          ║    helm list -A
+          ╚══════════════════════════════════════════════════════════════════════╝

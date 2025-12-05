@@ -1,0 +1,221 @@
+---
+# =============================================================================
+# Longhorn Disk Preparation - Auto-detection by Size
+# =============================================================================
+# This role automatically finds the correct disk by size, avoiding the problem
+# of unstable /dev/sdX device names in virtualized environments.
+# =============================================================================
+
+- name: Display Longhorn disk preparation information
+  ansible.builtin.debug:
+    msg: |
+      Starting Longhorn disk preparation on {{ inventory_hostname }}
+      Looking for disk with size: {{ longhorn_disk_size_gb }}GB
+      Fallback device: {{ longhorn_disk_fallback }}
+
+# =============================================================================
+# Auto-detect the storage disk by size
+# =============================================================================
+
+- name: Get disk sizes for all block devices
+  ansible.builtin.shell: |
+    lsblk -b -d -n -o NAME,SIZE,TYPE | grep disk | while read name size type; do
+      echo "$name:$size"
+    done
+  register: disk_sizes_raw
+  changed_when: false
+
+- name: Parse disk sizes and find matching disk
+  ansible.builtin.set_fact:
+    detected_longhorn_disk: >-
+      {%- set target_bytes = longhorn_disk_size_gb | int * 1024 * 1024 * 1024 -%}
+      {%- set tolerance = 0.10 -%}
+      {%- set min_size = (target_bytes * (1 - tolerance)) | int -%}
+      {%- set max_size = (target_bytes * (1 + tolerance)) | int -%}
+      {%- set ns = namespace(found='') -%}
+      {%- for line in disk_sizes_raw.stdout_lines -%}
+        {%- set parts = line.split(':') -%}
+        {%- if parts | length == 2 -%}
+          {%- set disk_name = parts[0] -%}
+          {%- set disk_size = parts[1] | int -%}
+          {%- if disk_size >= min_size and disk_size <= max_size -%}
+            {%- set ns.found = '/dev/' ~ disk_name -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ ns.found }}
+
+- name: Display detected disk
+  ansible.builtin.debug:
+    msg: |
+      Disk detection results on {{ inventory_hostname }}:
+      - Target size: {{ longhorn_disk_size_gb }}GB
+      - Detected disk: {{ detected_longhorn_disk | default('NONE', true) }}
+      - All disks found: {{ disk_sizes_raw.stdout_lines }}
+
+# Use detected disk, or fall back to configured value
+- name: Set final Longhorn disk path
+  ansible.builtin.set_fact:
+    longhorn_disk: "{{ detected_longhorn_disk if detected_longhorn_disk else longhorn_disk_fallback }}"
+
+- name: Display final disk selection
+  ansible.builtin.debug:
+    msg: "Using disk {{ longhorn_disk }} for Longhorn storage on {{ inventory_hostname }}"
+
+# =============================================================================
+# Validate the selected disk
+# =============================================================================
+
+- name: Check if selected disk exists
+  ansible.builtin.stat:
+    path: "{{ longhorn_disk }}"
+  register: disk_check
+
+- name: Fail if disk does not exist
+  ansible.builtin.fail:
+    msg: |
+      ERROR: Disk {{ longhorn_disk }} does not exist on {{ inventory_hostname }}!
+      
+      Auto-detection looked for a disk of size {{ longhorn_disk_size_gb }}GB.
+      Available disks: {{ disk_sizes_raw.stdout_lines }}
+      
+      Possible solutions:
+      1. Verify the VM has a second disk attached
+      2. Adjust 'longhorn_disk_size_gb' in group_vars/all.yml
+      3. Set 'longhorn_disk_fallback' to the correct device path
+  when: not disk_check.stat.exists
+
+- name: Get selected disk size for verification
+  ansible.builtin.shell: lsblk -b -d -n -o SIZE {{ longhorn_disk }}
+  register: selected_disk_size
+  changed_when: false
+
+- name: Verify disk size is reasonable
+  ansible.builtin.debug:
+    msg: |
+      Verified disk {{ longhorn_disk }}:
+      - Size: {{ (selected_disk_size.stdout | int / 1024 / 1024 / 1024) | round(1) }}GB
+      - Expected: ~{{ longhorn_disk_size_gb }}GB
+
+# =============================================================================
+# Partition and format the disk
+# =============================================================================
+
+- name: Check if partition already exists
+  ansible.builtin.shell: blkid {{ longhorn_disk }}1 || true
+  register: partition_blkid
+  changed_when: false
+
+- name: Create partition table and partition on disk
+  ansible.builtin.shell: |
+    if ! blkid {{ longhorn_disk }}1 > /dev/null 2>&1; then
+      parted -s {{ longhorn_disk }} mklabel gpt
+      parted -s {{ longhorn_disk }} mkpart primary ext4 0% 100%
+      sleep 2
+    fi
+  when: partition_blkid.stdout == ""
+  register: partition_created
+
+- name: Wait for partition to be available
+  ansible.builtin.wait_for:
+    path: "{{ longhorn_disk }}1"
+    state: present
+    timeout: 30
+  when: partition_created.changed | default(false)
+
+- name: Check if partition is already formatted
+  ansible.builtin.shell: blkid -s TYPE -o value {{ longhorn_disk }}1 || true
+  register: partition_fs_check
+  changed_when: false
+
+- name: Format partition with ext4
+  ansible.builtin.filesystem:
+    fstype: "{{ longhorn_fs_type }}"
+    dev: "{{ longhorn_disk }}1"
+    force: no
+  when: partition_fs_check.stdout == ""
+
+# =============================================================================
+# Mount the disk
+# =============================================================================
+
+- name: Create Longhorn mount point directory
+  ansible.builtin.file:
+    path: "{{ longhorn_mount_point }}"
+    state: directory
+    mode: '0755'
+
+- name: Get partition UUID
+  ansible.builtin.shell: blkid -s UUID -o value {{ longhorn_disk }}1
+  register: partition_uuid
+  changed_when: false
+
+- name: Display partition UUID
+  ansible.builtin.debug:
+    msg: "Partition UUID: {{ partition_uuid.stdout }}"
+
+- name: Add disk to fstab using UUID (stable across reboots)
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: ".*{{ longhorn_mount_point }}.*"
+    line: "UUID={{ partition_uuid.stdout }} {{ longhorn_mount_point }} {{ longhorn_fs_type }} defaults,nofail 0 2"
+    state: present
+    create: yes
+
+- name: Mount the Longhorn disk
+  ansible.posix.mount:
+    path: "{{ longhorn_mount_point }}"
+    src: "UUID={{ partition_uuid.stdout }}"
+    fstype: "{{ longhorn_fs_type }}"
+    opts: defaults,nofail
+    state: mounted
+
+- name: Verify disk is mounted
+  ansible.builtin.shell: df -h {{ longhorn_mount_point }}
+  register: mount_verify
+  changed_when: false
+
+- name: Display mount information
+  ansible.builtin.debug:
+    msg: "{{ mount_verify.stdout_lines }}"
+
+- name: Set correct permissions on Longhorn directory
+  ansible.builtin.file:
+    path: "{{ longhorn_mount_point }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+# =============================================================================
+# Install required packages for Longhorn
+# =============================================================================
+
+- name: Ensure open-iscsi is installed and running
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: yes
+    state: started
+
+- name: Ensure NFSv4 client is available
+  ansible.builtin.apt:
+    name:
+      - nfs-common
+    state: present
+
+# =============================================================================
+# Summary
+# =============================================================================
+
+- name: Disk preparation complete
+  ansible.builtin.debug:
+    msg: |
+      ═══════════════════════════════════════════════════════════════
+      Longhorn disk preparation complete on {{ inventory_hostname }}!
+      ═══════════════════════════════════════════════════════════════
+      Detected Disk: {{ longhorn_disk }}
+      Partition:     {{ longhorn_disk }}1
+      Mount Point:   {{ longhorn_mount_point }}
+      UUID:          {{ partition_uuid.stdout }}
+      Filesystem:    {{ longhorn_fs_type }}
+      ═══════════════════════════════════════════════════════════════

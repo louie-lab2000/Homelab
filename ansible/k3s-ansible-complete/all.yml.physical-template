@@ -1,0 +1,142 @@
+---
+# =============================================================================
+# K3s HA Cluster - Physical Hardware Deployment Configuration
+# =============================================================================
+# This is a template for deploying to physical hardware instead of Proxmox VMs.
+# 
+# BEFORE USING THIS FILE:
+# 1. Run discovery commands on your physical nodes (see comments below)
+# 2. Replace all <PLACEHOLDER> values with your actual hardware values
+# 3. Rename this file to 'all.yml' in your group_vars/ directory
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# NETWORK CONFIGURATION
+# -----------------------------------------------------------------------------
+# DISCOVERY COMMAND: Run on each physical node:
+#   ip link show
+#   ls /sys/class/net/
+#
+# Common physical NIC names:
+#   - eth0        (traditional naming)
+#   - eno1        (onboard NIC, Intel)
+#   - enp0s31f6   (PCI slot naming)
+#   - bond0       (bonded NICs)
+#
+# Proxmox default was: ens18
+node_interface: <YOUR_PHYSICAL_NIC_NAME>  # e.g., eth0, eno1, enp0s31f6
+
+# Virtual IP for K3s API server (KubeVIP)
+# This IP must be unused and in the same subnet as your nodes
+kubevip_vip: 192.168.50.50
+
+# MetalLB LoadBalancer IP pool
+# These IPs will be assigned to LoadBalancer-type Services
+# Ensure this range is reserved and not used by DHCP
+metallb_ip_range: "192.168.50.60-192.168.50.100"
+
+# Fixed IP for ingress-nginx (all ingress traffic routes here)
+ingress_nginx_ip: "192.168.50.61"
+
+# -----------------------------------------------------------------------------
+# STORAGE CONFIGURATION (LONGHORN)
+# -----------------------------------------------------------------------------
+# DISCOVERY COMMAND: Run on each physical node:
+#   lsblk
+#   fdisk -l
+#
+# Common disk device names:
+#   - /dev/sdb        (SATA/SAS second disk)
+#   - /dev/sdc        (SATA/SAS third disk)
+#   - /dev/nvme0n1    (first NVMe drive)
+#   - /dev/nvme1n1    (second NVMe drive)
+#
+# NOTE: Ensure this disk is:
+#   - Dedicated to Longhorn (not shared with OS)
+#   - The same device name on ALL nodes (or use separate host_vars)
+#
+# Proxmox default was: /dev/sdb
+longhorn_disk: <YOUR_STORAGE_DISK>  # e.g., /dev/sdb, /dev/nvme1n1
+
+# Mount point for Longhorn storage (usually doesn't need to change)
+longhorn_mount_path: /var/lib/longhorn
+
+# -----------------------------------------------------------------------------
+# DOMAIN AND DNS CONFIGURATION
+# -----------------------------------------------------------------------------
+# Your base domain for the cluster
+cluster_domain: louielab.cc
+
+# Rancher hostname (must have DNS entry pointing to ingress_nginx_ip)
+rancher_hostname: rancher.louielab.cc
+
+# Initial Rancher admin password (change after first login!)
+rancher_bootstrap_password: admin
+
+# -----------------------------------------------------------------------------
+# NODE CONFIGURATION
+# -----------------------------------------------------------------------------
+# SSH user for Ansible (must have passwordless sudo)
+ansible_user: ansible
+
+# K3s version (leave empty for latest stable)
+k3s_version: ""
+
+# -----------------------------------------------------------------------------
+# COMPONENT VERSIONS
+# -----------------------------------------------------------------------------
+# These are the tested versions from the original playbook
+# Update with caution - test in a dev environment first
+
+kubevip_version: "v1.0.2"
+metallb_version: "v0.15.2"
+longhorn_version: "v1.7.2"
+certmanager_version: "v1.17.4"
+
+# -----------------------------------------------------------------------------
+# PHYSICAL HARDWARE EXTRAS (OPTIONAL)
+# -----------------------------------------------------------------------------
+# Uncomment and configure these for physical deployments
+
+# IPMI/BMC addresses for out-of-band management
+# ipmi_addresses:
+#   node-1: 192.168.50.141
+#   node-2: 192.168.50.142
+#   node-3: 192.168.50.143
+
+# Additional firmware packages for physical hardware
+# Add to roles/prepare/tasks/main.yml if needed
+# physical_firmware_packages:
+#   - firmware-linux
+#   - firmware-linux-nonfree
+#   - firmware-realtek
+#   - firmware-iwlwifi
+#   - firmware-bnx2
+
+# NIC bonding configuration (if using bonded NICs)
+# bond_mode: 802.3ad  # LACP
+# bond_interfaces:
+#   - eth0
+#   - eth1
+
+# -----------------------------------------------------------------------------
+# NOTES FOR PHYSICAL DEPLOYMENT
+# -----------------------------------------------------------------------------
+# 1. Ensure all nodes have:
+#    - Static IP addresses configured
+#    - Same NIC name for cluster interface
+#    - Same disk device name for Longhorn storage
+#    - Ansible user with passwordless sudo
+#    - SSH key authentication configured
+#
+# 2. Before running the playbook:
+#    - Verify DNS entries exist for rancher hostname
+#    - Ensure VIP and MetalLB IPs are not in use
+#    - Test connectivity: ansible all -m ping
+#
+# 3. Physical hardware considerations:
+#    - May need firmware packages for network/storage drivers
+#    - BIOS/UEFI settings for virtualization (if running VMs later)
+#    - Consider RAID configuration for system disk
+#    - Ensure proper cooling and power redundancy
+# =============================================================================

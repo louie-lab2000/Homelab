@@ -1,0 +1,79 @@
+services:
+  nextcloud:
+    image: nextcloud
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - nextclouddb
+      - redis
+    ports:
+      - 9090:80
+    env_file:
+      - nextcloud.env
+    volumes:
+      - type: volume
+        source: html
+        target: /var/www/html
+        volume:
+          nocopy: true
+      - type: volume
+        source: data
+        target: /mnt/ncdata
+        volume:
+          nocopy: true
+
+  nextclouddb:
+    image: mariadb:11.4
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    env_file:
+      - nextcloud.env
+    volumes:
+      - type: volume
+        source: database
+        target: /var/lib/mysql
+        volume:
+          nocopy: true
+
+  collabora:
+    image: collabora/code
+    container_name: collabora
+    restart: unless-stopped
+    env_file:
+      - nextcloud.env
+    ports:
+      - 9980:9980
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis
+        target: /data
+        volume:
+          nocopy: true
+
+volumes:
+  html:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/volume1/nextcloud/html"
+  data:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/volume1/nextcloud/data"
+  database:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/volume1/nextcloud/database"
+  redis:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/volume1/nextcloud/redis"

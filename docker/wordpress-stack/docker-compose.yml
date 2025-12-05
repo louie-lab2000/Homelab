@@ -1,0 +1,62 @@
+services:
+  wordpress:
+    depends_on:
+      - db
+      - redis
+    image: wordpress:latest
+    container_name: wordpress
+    restart: unless-stopped
+    ports:
+      - 8080:80    		# double check port availability
+    env_file:
+      - wordpress.env
+    volumes:
+      - type: volume
+        source: wp-site
+        target: /var/www/html
+        volume:
+          nocopy: true
+
+  db:
+    image: mariadb:latest
+    container_name: wp-mariadb
+    restart: unless-stopped
+    user: 3001:3001		# Double check port availability	
+    env_file:
+      - wordpress.env
+    volumes:
+      - type: volume
+        source: wp-data
+        target: /var/lib/mysql
+        volume:
+          nocopy: true
+
+  redis:
+    image: redis:alpine
+    container_name: wp-redis
+    restart: unless-stopped
+    volumes:
+      - /home/louie/wordpress/redis:/data
+
+  phpmyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    container_name: wp-phpma
+    restart: unless-stopped
+    ports:
+      - 8090:80			#double check port availability
+    env_file:
+      - wordpress.env
+
+volumes:
+  wp-site:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":volume1/wordpress/site"
+  wp-data:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/volume1/wordpress/data"

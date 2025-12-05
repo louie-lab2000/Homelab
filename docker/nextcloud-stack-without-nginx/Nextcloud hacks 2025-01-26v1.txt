@@ -1,0 +1,69 @@
+******  CONFIG.PHP edits that may be needed
+
+'overwriteprotocol' => 'https',
+
+'overwrite.cli.url' => 'http://subdomain.yourdomain.com',
+
+'overwritehost' => 'storage.louielab.cc:30027',
+
+'overwrite.cli.url' => 'https://nextcloud.louiecloud.com',
+'overwritehost' => 'https://nextcloud.louiecloud.com',
+
+
+
+'trusted_proxies' => 
+  array (
+    0 => '127.0.0.1',
+    1 => '192.168.0.0/16',
+    2 => '172.16.0.0/12',
+    3 => '10.0.0.0/8',
+  ),
+
+ 'trusted_domains' => 
+  array (
+    0 => 'localhost',
+    1 => '<the ip address of your machine>',
+    2 => 'subdomain.yourdomain.com',
+  ),
+
+'datadirectory' => '/var/nextcloud_data', ***{change this to a directory mounted on an NFS share}
+'updatedirectory' => '/var/nc_update',    ***{change this when using NFS for the data directory}
+
+
+****** Crontab entry to run cron jobs in docker
+
+*/5 * * * * docker exec -u www-data nextcloud php /var/www/html/cron.php 
+
+*** the docker user has to be set up to run docker commands without a password
+
+
+
+
+
+
+******  .htaccess edits that may be needed
+
+php_value upload_max_filesize 16G
+php_value post_max_size 16G
+php_value max_input_time 3600
+php_value max_execution_time 3600
+php_value memory_limit 2048M
+
+
+
+# Satisfy Nextcloud HSTS warning.
+Header set Strict-Transport-Security "max-age=15552000; includeSubDomains; preload"
+
+
+
+*****  Cloudflare settings that may need adjustment
+
+After going through both Nextcloud and Cloudflare I have found that Disabling Rocket Loader™ from Cloudflare fix the problem.
+How to Fix:
+
+    Login to cloudflare
+    Navigate to Speed Under your site.
+    Under Optimization Locate Rocket Loader™
+    Turn it off
+    Reload or Refresh your site.
+    Done.

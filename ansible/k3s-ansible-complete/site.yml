@@ -1,0 +1,215 @@
+---
+# =============================================================================
+# K3s HA Cluster Complete Setup Playbook
+# =============================================================================
+# This playbook sets up a 3-node K3s HA cluster with:
+# - All nodes as control plane + workers
+# - KubeVIP for API server HA
+# - MetalLB for service load balancing
+# - Longhorn for distributed storage
+# - ingress-nginx for ingress controller
+# - cert-manager for TLS certificates
+# - Rancher for cluster management UI
+#
+# Usage: ansible-playbook site.yml
+# =============================================================================
+
+# Phase 1: Prepare all nodes
+- name: "Phase 1: Prepare all nodes for K3s"
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - prepare
+  tags:
+    - prepare
+    - phase1
+
+# Phase 2: Initialize first master node with K3s
+- name: "Phase 2: Initialize K3s on first master"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - k3s-init
+  tags:
+    - k3s-init
+    - phase2
+
+# Phase 3: Install KubeVIP for API server HA
+- name: "Phase 3: Install KubeVIP"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - kubevip
+  tags:
+    - kubevip
+    - phase3
+
+# Phase 4: Join additional master nodes
+- name: "Phase 4: Join additional master nodes"
+  hosts: k3s_additional_masters
+  become: true
+  gather_facts: true
+  serial: 1
+  any_errors_fatal: true
+  roles:
+    - k3s-join
+  tags:
+    - k3s-join
+    - phase4
+
+# Phase 5: Install MetalLB
+- name: "Phase 5: Install MetalLB"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - metallb
+  tags:
+    - metallb
+    - phase5
+
+# Phase 6: Prepare Longhorn storage on all nodes
+- name: "Phase 6: Prepare Longhorn storage disks"
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - longhorn-prep
+  tags:
+    - longhorn-prep
+    - phase6
+
+# Phase 7: Install Longhorn
+- name: "Phase 7: Install Longhorn"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - longhorn
+  tags:
+    - longhorn
+    - phase7
+
+# Phase 8: Install ingress-nginx
+- name: "Phase 8: Install ingress-nginx"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - ingress-nginx
+  tags:
+    - ingress-nginx
+    - phase8
+
+# Phase 9: Install cert-manager
+- name: "Phase 9: Install cert-manager"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - cert-manager
+  tags:
+    - cert-manager
+    - phase9
+
+# Phase 10: Install Rancher
+- name: "Phase 10: Install Rancher"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - rancher
+  tags:
+    - rancher
+    - phase10
+
+# Final: Display cluster summary
+- name: "Final: Display cluster summary"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Get all nodes
+      ansible.builtin.shell: kubectl get nodes -o wide
+      register: final_nodes
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get all pods
+      ansible.builtin.shell: kubectl get pods -A
+      register: final_pods
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get services
+      ansible.builtin.shell: kubectl get svc -A
+      register: final_services
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get Longhorn UI IP
+      ansible.builtin.shell: |
+        kubectl get svc longhorn-frontend-lb -n longhorn-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending"
+      register: longhorn_ui_ip
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get ingress-nginx IP
+      ansible.builtin.shell: |
+        kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending"
+      register: ingress_ip
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display final cluster summary
+      ansible.builtin.debug:
+        msg: |
+          
+          ╔══════════════════════════════════════════════════════════════════════╗
+          ║                    K3S HA CLUSTER SETUP COMPLETE!                   ║
+          ╠══════════════════════════════════════════════════════════════════════╣
+          ║  Cluster Nodes:                                                      ║
+          ╚══════════════════════════════════════════════════════════════════════╝
+          {{ final_nodes.stdout }}
+          
+          ╔══════════════════════════════════════════════════════════════════════╗
+          ║  Key Information:                                                    ║
+          ╠══════════════════════════════════════════════════════════════════════╣
+          ║  API Server VIP (KubeVIP): https://{{ kubevip_vip }}:6443
+          ║  MetalLB IP Range: {{ metallb_ip_range }}
+          ║  
+          ║  Web UIs:
+          ║    Longhorn UI: http://{{ longhorn_ui_ip.stdout }}
+          ║    Rancher UI:  https://{{ rancher_hostname }}
+          ║  
+          ║  Rancher Bootstrap Password: {{ rancher_bootstrap_password }}
+          ║  (You will be prompted to change this on first login)
+          ║  
+          ║  IP Assignments:
+          ║    KubeVIP (API):      {{ kubevip_vip }}
+          ║    Longhorn UI:        {{ longhorn_ui_ip.stdout }}
+          ║    ingress-nginx:      {{ ingress_ip.stdout }}
+          ║  
+          ║  Kubeconfig Location: ~/.kube/config (on each node)
+          ║  
+          ║  To access cluster from your workstation:
+          ║    scp ansible@192.168.50.41:~/.kube/config ~/.kube/config
+          ║    
+          ║  DNS Required:
+          ║    {{ rancher_hostname }} -> {{ ingress_ip.stdout }}
+          ╚══════════════════════════════════════════════════════════════════════╝
+  tags:
+    - summary
+    - always

@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-linkwarden
+    networks:
+      - linkwarden
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    restart: always
+    volumes:
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql/data
+        volume:
+          nocopy: true
+
+  linkwarden:
+    image: ghcr.io/linkwarden/linkwarden:latest
+    container_name: linkwarden
+    restart: always
+    networks:
+      - linkwarden
+      - nginx
+    environment:
+      - NEXTAUTH_URL=https://linkwarden.louielab.cc/api/v1/auth
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+    ports:
+      - 3001:3000
+    volumes:
+      - type: volume
+        source: data
+        target: /data/data
+        volume:
+          nocopy: true
+    depends_on:
+      - postgres
+      - meilisearch
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12.8
+    container_name: meilisearch
+    restart: always
+    networks:
+      - linkwarden
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+    volumes:
+      - type: volume
+        source: meili_data
+        target: /meili_data
+        volume:
+          nocopy: true
+
+networks:
+  linkwarden:
+    external: true
+  nginx:
+    external: true
+
+volumes:
+  pgdata:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      device: ":/volume1/linkwarden/pgdata"
+  data:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      device: ":/volume1/linkwarden/data"
+  meili_data:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      device: ":/volume1/linkwarden/meili_data"

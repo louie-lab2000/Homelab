@@ -1,0 +1,107 @@
+---
+- name: Display join information
+  ansible.builtin.debug:
+    msg: "Joining {{ inventory_hostname }} ({{ ansible_host }}) to K3s cluster via VIP {{ kubevip_vip }} - FQDN: {{ hostname | lower }}"
+
+- name: Get K3s token from initial master
+  ansible.builtin.set_fact:
+    k3s_token: "{{ hostvars[groups['k3s_initial_master'][0]]['k3s_token'] }}"
+
+- name: Check if K3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Check if node is already part of cluster
+  ansible.builtin.shell: |
+    kubectl get nodes {{ hostname | lower }} --kubeconfig=/etc/rancher/k3s/k3s.yaml 2>/dev/null || echo "not found"
+  register: node_check
+  changed_when: false
+  failed_when: false
+
+- name: Wait for VIP to be reachable
+  ansible.builtin.wait_for:
+    host: "{{ kubevip_vip }}"
+    port: 6443
+    timeout: 120
+
+- name: Download K3s installation script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  when: not k3s_binary.stat.exists or "not found" in node_check.stdout
+
+# NOTE: --node-taint="" was removed - it causes parse errors in newer K3s versions
+- name: Join cluster as server node
+  ansible.builtin.shell: |
+    INSTALL_K3S_EXEC="server" \
+    K3S_TOKEN="{{ k3s_token }}" \
+    K3S_URL="https://{{ kubevip_vip }}:6443" \
+    sh /tmp/k3s-install.sh \
+      --server=https://{{ kubevip_vip }}:6443 \
+      --tls-san={{ kubevip_vip }} \
+      --tls-san={{ ansible_host }} \
+      --tls-san={{ hostname }} \
+      --tls-san={{ hostname | lower }} \
+      --tls-san=k3s-vip \
+      --tls-san=k3s-vip.louielab.cc \
+      --disable=servicelb \
+      --disable=traefik \
+      --flannel-iface={{ node_interface }} \
+      --node-ip={{ ansible_host }} \
+      --advertise-address={{ ansible_host }} \
+      --write-kubeconfig-mode=644
+  args:
+    creates: /etc/rancher/k3s/k3s.yaml
+  register: k3s_join_result
+
+- name: Wait for K3s config to be created
+  ansible.builtin.wait_for:
+    path: /etc/rancher/k3s/k3s.yaml
+    state: present
+    timeout: 120
+
+- name: Create .kube directory for user
+  ansible.builtin.file:
+    path: "/home/ansible/.kube"
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0755'
+
+- name: Copy kubeconfig for user
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "/home/ansible/.kube/config"
+    remote_src: yes
+    owner: ansible
+    group: ansible
+    mode: '0600'
+
+- name: Update kubeconfig server address to VIP
+  ansible.builtin.replace:
+    path: "/home/ansible/.kube/config"
+    regexp: 'server: https://127\.0\.0\.1:6443'
+    replace: 'server: https://{{ kubevip_vip }}:6443'
+
+# NOTE: Use {{ hostname | lower }} because K3s registers nodes with FQDN
+- name: Wait for node to be Ready
+  ansible.builtin.shell: |
+    kubectl get nodes {{ hostname | lower }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 30
+  delay: 10
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Display node status
+  ansible.builtin.shell: kubectl get nodes -o wide
+  register: node_status
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Show node status
+  ansible.builtin.debug:
+    msg: "{{ node_status.stdout_lines }}"

@@ -1,0 +1,216 @@
+---
+# =============================================================================
+# Install NFS CSI Driver and StorageClass
+# =============================================================================
+# Installs the kubernetes-sigs/nfs-subdir-external-provisioner
+# Creates a StorageClass for dynamic NFS provisioning
+#
+# Prerequisites:
+#   - K3s cluster running
+#   - Storage VLAN NIC configured on nodes
+#   - NFS share accessible from nodes
+#
+# Usage: ansible-playbook install-nfs-csi.yml
+# =============================================================================
+
+- name: "Install NFS CSI Driver"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  
+  vars:
+    # NFS Server Configuration
+    nfs_server: 192.168.3.3
+    nfs_path: /volume1/kubestor
+    
+    # StorageClass Configuration
+    storage_class_name: nfs-synology
+    storage_class_default: false  # Set to true if you want NFS as default instead of Longhorn
+    
+    # Provisioner Configuration
+    nfs_provisioner_name: nfs-synology
+    nfs_namespace: nfs-provisioner
+
+  tasks:
+    # =========================================================================
+    # Pre-flight checks
+    # =========================================================================
+    
+    - name: Verify NFS is accessible from this node
+      ansible.builtin.shell: showmount -e {{ nfs_server }}
+      register: nfs_check
+      changed_when: false
+      
+    - name: Display available NFS exports
+      ansible.builtin.debug:
+        msg: "{{ nfs_check.stdout_lines }}"
+
+    - name: Test mount NFS share
+      ansible.builtin.shell: |
+        mkdir -p /tmp/nfs-test
+        mount -t nfs {{ nfs_server }}:{{ nfs_path }} /tmp/nfs-test
+        touch /tmp/nfs-test/.ansible-write-test
+        rm /tmp/nfs-test/.ansible-write-test
+        umount /tmp/nfs-test
+        rmdir /tmp/nfs-test
+      register: nfs_mount_test
+
+    - name: NFS write test passed
+      ansible.builtin.debug:
+        msg: "Successfully mounted and wrote to NFS share"
+
+    # =========================================================================
+    # Install NFS CSI Driver via Helm
+    # =========================================================================
+
+    - name: Add NFS provisioner Helm repository
+      ansible.builtin.shell: |
+        helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+        helm repo update
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Create namespace for NFS provisioner
+      ansible.builtin.shell: |
+        kubectl create namespace {{ nfs_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Install NFS subdir external provisioner
+      ansible.builtin.shell: |
+        helm upgrade --install {{ nfs_provisioner_name }} \
+          nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+          --namespace {{ nfs_namespace }} \
+          --set nfs.server={{ nfs_server }} \
+          --set nfs.path={{ nfs_path }} \
+          --set storageClass.name={{ storage_class_name }} \
+          --set storageClass.defaultClass={{ storage_class_default | lower }} \
+          --set storageClass.accessModes=ReadWriteMany \
+          --set storageClass.reclaimPolicy=Retain \
+          --set storageClass.volumeBindingMode=Immediate \
+          --set nfs.mountOptions[0]=nfsvers=4.1 \
+          --set nfs.mountOptions[1]=hard \
+          --set nfs.mountOptions[2]=intr
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: helm_install
+
+    - name: Display Helm install output
+      ansible.builtin.debug:
+        msg: "{{ helm_install.stdout_lines }}"
+
+    # =========================================================================
+    # Verify installation
+    # =========================================================================
+
+    - name: Wait for NFS provisioner pod to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod \
+          -l app=nfs-subdir-external-provisioner \
+          -n {{ nfs_namespace }} \
+          --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get provisioner pod status
+      ansible.builtin.shell: kubectl get pods -n {{ nfs_namespace }} -o wide
+      register: provisioner_pods
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display provisioner pods
+      ansible.builtin.debug:
+        msg: "{{ provisioner_pods.stdout_lines }}"
+
+    - name: Get StorageClasses
+      ansible.builtin.shell: kubectl get storageclasses
+      register: storage_classes
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display StorageClasses
+      ansible.builtin.debug:
+        msg: "{{ storage_classes.stdout_lines }}"
+
+    # =========================================================================
+    # Create test PVC to verify everything works
+    # =========================================================================
+
+    - name: Create test PVC
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: nfs-test-pvc
+          namespace: default
+        spec:
+          storageClassName: {{ storage_class_name }}
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 100Mi
+        EOF
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for test PVC to bind
+      ansible.builtin.shell: |
+        kubectl wait --for=jsonpath='{.status.phase}'=Bound pvc/nfs-test-pvc -n default --timeout=60s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get PVC status
+      ansible.builtin.shell: kubectl get pvc nfs-test-pvc -n default
+      register: pvc_status
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display PVC status
+      ansible.builtin.debug:
+        msg: "{{ pvc_status.stdout_lines }}"
+
+    - name: Clean up test PVC
+      ansible.builtin.shell: kubectl delete pvc nfs-test-pvc -n default
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Summary
+    # =========================================================================
+
+    - name: Installation complete
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          NFS CSI Driver Installation Complete!
+          ═══════════════════════════════════════════════════════════════
+          
+          NFS Server:     {{ nfs_server }}
+          NFS Path:       {{ nfs_path }}
+          StorageClass:   {{ storage_class_name }}
+          Namespace:      {{ nfs_namespace }}
+          
+          Available StorageClasses:
+            - longhorn (default) - Replicated block storage
+            - {{ storage_class_name }} - NFS shared storage
+          
+          Usage Example:
+          
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: my-nfs-pvc
+            spec:
+              storageClassName: {{ storage_class_name }}
+              accessModes:
+                - ReadWriteMany
+              resources:
+                requests:
+                  storage: 1Gi
+          
+          ═══════════════════════════════════════════════════════════════

@@ -1,0 +1,36 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    networks:
+      - nginx-edge_default
+    environment:
+      - DOMAIN=https://vw.louielab.cc
+      - SIGNUPS_ALLOWED=true
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+    volumes:
+      - type: volume
+        source: vaultwarden
+        target: /data
+        volume:
+          nocopy: true
+    ports:
+      - 9081:80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/alive"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+networks:
+  nginx-edge_default:
+    external: true
+
+volumes:
+  vaultwarden:
+    driver_opts:
+      type: "nfs"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/volume1/vaultwarden"

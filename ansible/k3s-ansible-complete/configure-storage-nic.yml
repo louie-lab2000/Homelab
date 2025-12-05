@@ -1,0 +1,114 @@
+---
+# =============================================================================
+# Configure Storage VLAN Interface on K3s Nodes
+# =============================================================================
+# Adds static IP configuration for second NIC (ens19) on storage VLAN
+#
+# Prerequisites:
+#   - Second NIC added in Proxmox (vmbr0, VLAN 3)
+#   - VMs can be running when NIC is added
+#
+# Usage: ansible-playbook configure-storage-nic.yml
+# =============================================================================
+
+- name: "Configure Storage VLAN Interface"
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  
+  vars:
+    storage_interface: ens19
+    storage_netmask: 24
+    
+    # Per-node storage IPs
+    node_storage_ips:
+      node-1: 192.168.3.41
+      node-2: 192.168.3.42
+      node-3: 192.168.3.43
+
+  tasks:
+    - name: Wait for second NIC to appear
+      ansible.builtin.wait_for:
+        path: /sys/class/net/{{ storage_interface }}
+        state: present
+        timeout: 60
+
+    - name: Get current network interfaces
+      ansible.builtin.shell: ip link show
+      register: interfaces
+      changed_when: false
+
+    - name: Display detected interfaces
+      ansible.builtin.debug:
+        msg: "{{ interfaces.stdout_lines }}"
+
+    - name: Create interface configuration for storage VLAN
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces.d/ens19-storage
+        mode: '0644'
+        content: |
+          # Storage VLAN interface for NFS access
+          # Managed by Ansible - do not edit manually
+          auto {{ storage_interface }}
+          iface {{ storage_interface }} inet static
+              address {{ node_storage_ips[inventory_hostname] }}
+              netmask 255.255.255.0
+              # No gateway - storage network only, main gateway on ens18
+      register: interface_config
+
+    - name: Bring up storage interface
+      ansible.builtin.shell: ifup {{ storage_interface }}
+      when: interface_config.changed
+      register: ifup_result
+      failed_when: false
+
+    - name: Alternative - bring up with ip command if ifup fails
+      ansible.builtin.shell: |
+        ip addr add {{ node_storage_ips[inventory_hostname] }}/{{ storage_netmask }} dev {{ storage_interface }} || true
+        ip link set {{ storage_interface }} up
+      when: interface_config.changed and ifup_result.rc != 0
+
+    - name: Wait for interface to come up
+      ansible.builtin.pause:
+        seconds: 3
+      when: interface_config.changed
+
+    - name: Verify storage interface is up
+      ansible.builtin.shell: ip addr show {{ storage_interface }}
+      register: storage_ip_check
+      changed_when: false
+
+    - name: Display storage interface configuration
+      ansible.builtin.debug:
+        msg: "{{ storage_ip_check.stdout_lines }}"
+
+    - name: Test connectivity to Synology NAS
+      ansible.builtin.shell: ping -c 3 192.168.3.3
+      register: ping_test
+      changed_when: false
+      failed_when: false
+
+    - name: Display ping results
+      ansible.builtin.debug:
+        msg: "{{ ping_test.stdout_lines }}"
+
+    - name: Verify NFS mount is accessible
+      ansible.builtin.shell: showmount -e 192.168.3.3
+      register: nfs_exports
+      changed_when: false
+      failed_when: false
+
+    - name: Display NFS exports
+      ansible.builtin.debug:
+        msg: "{{ nfs_exports.stdout_lines | default(['Could not query NFS exports - this is OK if NFS is not yet configured']) }}"
+
+    - name: Configuration complete
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          Storage VLAN interface configured on {{ inventory_hostname }}!
+          ═══════════════════════════════════════════════════════════════
+          Interface:  {{ storage_interface }}
+          IP Address: {{ node_storage_ips[inventory_hostname] }}/{{ storage_netmask }}
+          NAS Access: 192.168.3.3 (Synology)
+          ═══════════════════════════════════════════════════════════════

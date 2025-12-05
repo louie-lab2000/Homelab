@@ -1,0 +1,5 @@
+   */5 * * * * docker exec -u www-data nextcloud php /var/www/html/cron.php 
+
+
+docker exec -u www-data nextcloud php /var/www/html/cron.php
+

@@ -1,0 +1,87 @@
+---
+- name: Display ingress-nginx installation information
+  ansible.builtin.debug:
+    msg: "Installing ingress-nginx with LoadBalancer IP {{ ingress_nginx_ip }}"
+
+- name: Check if Helm is installed
+  ansible.builtin.command: which helm
+  register: helm_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Helm
+  ansible.builtin.shell: |
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  when: helm_check.rc != 0
+
+- name: Add ingress-nginx Helm repository
+  ansible.builtin.shell: |
+    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    helm repo update
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Create ingress-nginx namespace
+  ansible.builtin.shell: |
+    kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Check if ingress-nginx is already installed
+  ansible.builtin.shell: |
+    helm list -n ingress-nginx -q | grep -q ingress-nginx && echo "installed" || echo "not installed"
+  register: ingress_nginx_check
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: false
+
+- name: Install ingress-nginx via Helm
+  ansible.builtin.shell: |
+    helm install ingress-nginx ingress-nginx/ingress-nginx \
+      --namespace ingress-nginx \
+      --set controller.service.loadBalancerIP={{ ingress_nginx_ip }}
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: ingress_nginx_check.stdout == "not installed"
+
+- name: Wait for ingress-nginx controller to be ready
+  ansible.builtin.shell: |
+    kubectl wait --namespace ingress-nginx \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 10
+
+- name: Wait for LoadBalancer IP to be assigned
+  ansible.builtin.shell: |
+    kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: ingress_lb_ip
+  until: ingress_lb_ip.stdout != ""
+  retries: 30
+  delay: 10
+
+- name: Verify ingress-nginx LoadBalancer IP
+  ansible.builtin.debug:
+    msg: "ingress-nginx LoadBalancer IP: {{ ingress_lb_ip.stdout }}"
+
+- name: Display ingress-nginx services
+  ansible.builtin.shell: kubectl get svc -n ingress-nginx
+  register: ingress_services
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Show ingress-nginx services
+  ansible.builtin.debug:
+    msg: "{{ ingress_services.stdout_lines }}"
+
+- name: ingress-nginx installation complete
+  ansible.builtin.debug:
+    msg: |
+      ingress-nginx has been installed successfully!
+      LoadBalancer IP: {{ ingress_lb_ip.stdout }}
+      All ingress resources should use ingressClassName: nginx

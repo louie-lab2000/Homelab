@@ -1,0 +1,106 @@
+---
+# =============================================================================
+# K3s Cluster Configuration
+# =============================================================================
+
+# Network Interface on all nodes (Proxmox VMs typically use ens18)
+node_interface: ens18
+
+# Virtual IP for the K3s API Server (managed by KubeVIP)
+kubevip_vip: "192.168.50.50"
+
+# K3s version (leave empty for latest stable)
+k3s_version: ""
+
+# K3s token (will be generated on first master and shared)
+k3s_token: ""
+
+# =============================================================================
+# KubeVIP Configuration
+# =============================================================================
+
+kubevip_version: "v1.0.2"
+kubevip_image: "ghcr.io/kube-vip/kube-vip:{{ kubevip_version }}"
+
+# =============================================================================
+# MetalLB Configuration
+# =============================================================================
+
+metallb_version: "v0.15.2"
+metallb_ip_range: "192.168.50.60-192.168.50.100"
+
+# =============================================================================
+# Longhorn Configuration
+# =============================================================================
+
+longhorn_version: "v1.7.2"
+
+# Disk auto-detection by size (recommended)
+# The playbook will automatically find a disk matching this size (±10% tolerance)
+# This avoids problems with unstable /dev/sdX device names in VMs
+longhorn_disk_size_gb: 200
+
+# Fallback device path if auto-detection fails
+# This is only used if no disk matching the target size is found
+longhorn_disk_fallback: "/dev/sdb"
+
+longhorn_mount_point: "/var/lib/longhorn"
+longhorn_fs_type: "ext4"
+
+# =============================================================================
+# Ingress-NGINX Configuration
+# =============================================================================
+
+ingress_nginx_ip: "192.168.50.61"
+
+# =============================================================================
+# cert-manager Configuration
+# =============================================================================
+
+cert_manager_version: "v1.17.4"
+
+# =============================================================================
+# Rancher Configuration
+# =============================================================================
+
+rancher_hostname: "rancher.louielab.cc"
+rancher_bootstrap_password: "admin"
+
+# =============================================================================
+# System Configuration
+# =============================================================================
+
+disable_swap: true
+
+# System packages to install (parted is required for disk partitioning)
+system_packages:
+  - curl
+  - wget
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - open-iscsi
+  - nfs-common
+  - util-linux
+  - jq
+  - parted
+
+# Kernel modules required for K3s and Longhorn
+kernel_modules:
+  - br_netfilter
+  - overlay
+  - ip_vs
+  - ip_vs_rr
+  - ip_vs_wrr
+  - ip_vs_sh
+  - iscsi_tcp
+
+# Sysctl settings for Kubernetes networking
+sysctl_settings:
+  - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+  - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+  - { key: "net.ipv4.ip_forward", value: "1" }
+  - { key: "net.ipv6.conf.all.forwarding", value: "1" }
+  - { key: "fs.inotify.max_user_watches", value: "524288" }
+  - { key: "fs.inotify.max_user_instances", value: "512" }

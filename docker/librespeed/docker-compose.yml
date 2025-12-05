@@ -1,0 +1,16 @@
+services:
+  librespeed:
+    image: lscr.io/linuxserver/librespeed:latest
+    container_name: librespeed
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - PASSWORD=${PASSWORD}
+      - CUSTOM_RESULTS=false
+      - DB_TYPE=sqlite
+    volumes:
+      - /home/louie/speed:/config
+    ports:
+      - 8080:80
+    restart: unless-stopped

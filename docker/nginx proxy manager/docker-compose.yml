@@ -1,0 +1,16 @@
+services:
+  nginx-edge:
+    image: 'jc21/nginx-proxy-manager:2.12.3'
+    container_name: nginx
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - /home/louie/npm/data:/data
+      - /home/louie/npm/certs:/etc/letsencrypt

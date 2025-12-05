@@ -1,0 +1,127 @@
+---
+- name: Display initialization information
+  ansible.builtin.debug:
+    msg: "Initializing K3s cluster on {{ inventory_hostname }} ({{ ansible_host }}) - FQDN: {{ hostname | lower }}"
+
+- name: Check if K3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Check if K3s service is running
+  ansible.builtin.systemd:
+    name: k3s
+  register: k3s_service
+  ignore_errors: yes
+
+- name: Download K3s installation script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s-install.sh
+    mode: '0755'
+  when: not k3s_binary.stat.exists
+
+# NOTE: --node-taint="" was removed - it causes parse errors in newer K3s versions
+# By default, control-plane nodes can run workloads in K3s
+- name: Install K3s as initial server with cluster-init
+  ansible.builtin.shell: |
+    INSTALL_K3S_EXEC="server" \
+    K3S_TOKEN="{{ lookup('password', '/tmp/k3s_token chars=ascii_letters,digits length=32') }}" \
+    sh /tmp/k3s-install.sh \
+      --cluster-init \
+      --tls-san={{ kubevip_vip }} \
+      --tls-san={{ ansible_host }} \
+      --tls-san={{ hostname }} \
+      --tls-san={{ hostname | lower }} \
+      --tls-san=k3s-vip \
+      --tls-san=k3s-vip.louielab.cc \
+      --disable=servicelb \
+      --disable=traefik \
+      --flannel-iface={{ node_interface }} \
+      --node-ip={{ ansible_host }} \
+      --advertise-address={{ ansible_host }} \
+      --write-kubeconfig-mode=644
+  args:
+    creates: /etc/rancher/k3s/k3s.yaml
+  register: k3s_init_result
+
+- name: Wait for K3s to be ready
+  ansible.builtin.wait_for:
+    path: /etc/rancher/k3s/k3s.yaml
+    state: present
+    timeout: 120
+
+# NOTE: Accept 401 as valid - newer K3s requires auth for /healthz
+- name: Wait for K3s API to be available
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:6443/healthz"
+    validate_certs: no
+    status_code: [200, 401]
+  register: k3s_health
+  until: k3s_health.status in [200, 401]
+  retries: 30
+  delay: 10
+
+- name: Get K3s token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_token_raw
+
+- name: Set K3s token fact
+  ansible.builtin.set_fact:
+    k3s_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+    cacheable: yes
+
+- name: Read kubeconfig
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: kubeconfig_raw
+
+- name: Set kubeconfig fact
+  ansible.builtin.set_fact:
+    k3s_kubeconfig: "{{ kubeconfig_raw.content | b64decode }}"
+    cacheable: yes
+
+- name: Create .kube directory for user
+  ansible.builtin.file:
+    path: "/home/ansible/.kube"
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: '0755'
+
+- name: Copy kubeconfig for user
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "/home/ansible/.kube/config"
+    remote_src: yes
+    owner: ansible
+    group: ansible
+    mode: '0600'
+
+- name: Update kubeconfig server address to VIP
+  ansible.builtin.replace:
+    path: "/home/ansible/.kube/config"
+    regexp: 'server: https://127\.0\.0\.1:6443'
+    replace: 'server: https://{{ kubevip_vip }}:6443'
+
+# NOTE: Use {{ hostname | lower }} because K3s registers nodes with FQDN (e.g., node-1.louielab.cc)
+- name: Wait for node to be Ready
+  ansible.builtin.shell: |
+    kubectl get nodes {{ hostname | lower }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 30
+  delay: 10
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Display cluster status
+  ansible.builtin.shell: kubectl get nodes -o wide
+  register: cluster_status
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Show cluster status
+  ansible.builtin.debug:
+    msg: "{{ cluster_status.stdout_lines }}"

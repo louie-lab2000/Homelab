@@ -1,0 +1,433 @@
+---
+# =============================================================================
+# K3s HA Cluster Upgrade Playbook
+# =============================================================================
+# This playbook upgrades cluster components to versions specified in group_vars/all.yml
+#
+# Usage:
+#   Upgrade everything:     ansible-playbook upgrade.yml
+#   Upgrade specific:       ansible-playbook upgrade.yml --tags k3s
+#   Dry-run (check mode):   ansible-playbook upgrade.yml --check
+#
+# Available tags: k3s, kubevip, metallb, longhorn, ingress-nginx, cert-manager, rancher
+#
+# IMPORTANT: Always backup etcd before upgrading!
+#   ansible-playbook upgrade.yml --tags backup
+# =============================================================================
+
+# Pre-upgrade: Backup etcd
+- name: "Pre-upgrade: Backup etcd"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - backup
+    - always
+  tasks:
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: /var/lib/rancher/k3s/server/db/snapshots-manual
+        state: directory
+        mode: '0700'
+
+    - name: Create etcd snapshot
+      ansible.builtin.shell: |
+        k3s etcd-snapshot save --name pre-upgrade-{{ ansible_date_time.iso8601_basic_short }}
+      register: etcd_backup
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display backup info
+      ansible.builtin.debug:
+        msg: "Etcd backup created: {{ etcd_backup.stdout | default('snapshot saved') }}"
+
+# Upgrade K3s on all nodes (rolling upgrade)
+- name: "Upgrade K3s"
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  serial: 1
+  tags:
+    - k3s
+  tasks:
+    - name: Get current K3s version
+      ansible.builtin.shell: k3s --version | head -1 | awk '{print $3}'
+      register: current_k3s_version
+      changed_when: false
+
+    - name: Display current K3s version
+      ansible.builtin.debug:
+        msg: "Current K3s version on {{ inventory_hostname }}: {{ current_k3s_version.stdout }}"
+
+    - name: Download K3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: '0755'
+
+    - name: Upgrade K3s
+      ansible.builtin.shell: |
+        INSTALL_K3S_SKIP_START=true sh /tmp/k3s-install.sh
+      register: k3s_upgrade
+      when: k3s_version == "" or k3s_version is not defined
+
+    - name: Upgrade K3s to specific version
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION="{{ k3s_version }}" INSTALL_K3S_SKIP_START=true sh /tmp/k3s-install.sh
+      register: k3s_upgrade_pinned
+      when: k3s_version != "" and k3s_version is defined
+
+    - name: Restart K3s service
+      ansible.builtin.systemd:
+        name: k3s
+        state: restarted
+        daemon_reload: yes
+
+    - name: Wait for node to be Ready
+      ansible.builtin.shell: |
+        kubectl get nodes {{ hostname | lower }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: node_ready
+      until: node_ready.stdout == "True"
+      retries: 30
+      delay: 10
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get new K3s version
+      ansible.builtin.shell: k3s --version | head -1 | awk '{print $3}'
+      register: new_k3s_version
+      changed_when: false
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "K3s upgraded on {{ inventory_hostname }}: {{ current_k3s_version.stdout }} -> {{ new_k3s_version.stdout }}"
+
+# Upgrade KubeVIP
+- name: "Upgrade KubeVIP"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - kubevip
+  tasks:
+    - name: Get current KubeVIP version
+      ansible.builtin.shell: |
+        kubectl get daemonset kube-vip -n kube-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2
+      register: current_kubevip_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+      failed_when: false
+
+    - name: Display current KubeVIP version
+      ansible.builtin.debug:
+        msg: "Current KubeVIP version: {{ current_kubevip_version.stdout | default('unknown') }}"
+
+    - name: Update KubeVIP DaemonSet image
+      ansible.builtin.shell: |
+        kubectl set image daemonset/kube-vip kube-vip={{ kubevip_image }} -n kube-system
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: current_kubevip_version.stdout != kubevip_version
+
+    - name: Wait for KubeVIP rollout
+      ansible.builtin.shell: |
+        kubectl rollout status daemonset/kube-vip -n kube-system --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: current_kubevip_version.stdout != kubevip_version
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "KubeVIP upgraded: {{ current_kubevip_version.stdout | default('unknown') }} -> {{ kubevip_version }}"
+
+# Upgrade MetalLB
+- name: "Upgrade MetalLB"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - metallb
+  tasks:
+    - name: Get current MetalLB version
+      ansible.builtin.shell: |
+        kubectl get deployment controller -n metallb-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2
+      register: current_metallb_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+      failed_when: false
+
+    - name: Display current MetalLB version
+      ansible.builtin.debug:
+        msg: "Current MetalLB version: {{ current_metallb_version.stdout | default('unknown') }}"
+
+    - name: Download new MetalLB manifest
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/metallb/metallb/{{ metallb_version }}/config/manifests/metallb-native.yaml"
+        dest: /tmp/metallb-native.yaml
+        mode: '0644'
+
+    - name: Apply MetalLB upgrade
+      ansible.builtin.shell: |
+        kubectl apply -f /tmp/metallb-native.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for MetalLB controller
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/controller -n metallb-system --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "MetalLB upgraded to {{ metallb_version }}"
+
+# Upgrade Longhorn
+- name: "Upgrade Longhorn"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - longhorn
+  tasks:
+    - name: Get current Longhorn version
+      ansible.builtin.shell: |
+        kubectl get deployment longhorn-driver-deployer -n longhorn-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2
+      register: current_longhorn_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+      failed_when: false
+
+    - name: Display current Longhorn version
+      ansible.builtin.debug:
+        msg: "Current Longhorn version: {{ current_longhorn_version.stdout | default('unknown') }}"
+
+    - name: Download new Longhorn manifest
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml"
+        dest: /tmp/longhorn.yaml
+        mode: '0644'
+
+    - name: Apply Longhorn upgrade
+      ansible.builtin.shell: |
+        kubectl apply -f /tmp/longhorn.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for Longhorn manager
+      ansible.builtin.shell: |
+        kubectl rollout status daemonset/longhorn-manager -n longhorn-system --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "Longhorn upgraded to {{ longhorn_version }}"
+
+# Upgrade ingress-nginx
+- name: "Upgrade ingress-nginx"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - ingress-nginx
+  tasks:
+    - name: Get current ingress-nginx version
+      ansible.builtin.shell: |
+        helm list -n ingress-nginx -o json | jq -r '.[0].chart' | cut -d- -f3
+      register: current_ingress_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+      failed_when: false
+
+    - name: Display current ingress-nginx version
+      ansible.builtin.debug:
+        msg: "Current ingress-nginx chart version: {{ current_ingress_version.stdout | default('unknown') }}"
+
+    - name: Update Helm repo
+      ansible.builtin.shell: |
+        helm repo update ingress-nginx
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Upgrade ingress-nginx
+      ansible.builtin.shell: |
+        helm upgrade ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx \
+          --set controller.service.loadBalancerIP={{ ingress_nginx_ip }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for ingress-nginx rollout
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/ingress-nginx-controller -n ingress-nginx --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get new ingress-nginx version
+      ansible.builtin.shell: |
+        helm list -n ingress-nginx -o json | jq -r '.[0].chart' | cut -d- -f3
+      register: new_ingress_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "ingress-nginx upgraded: {{ current_ingress_version.stdout | default('unknown') }} -> {{ new_ingress_version.stdout }}"
+
+# Upgrade cert-manager
+- name: "Upgrade cert-manager"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - cert-manager
+  tasks:
+    - name: Get current cert-manager version
+      ansible.builtin.shell: |
+        helm list -n cert-manager -o json | jq -r '.[0].chart' | cut -d- -f3
+      register: current_certmanager_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+      failed_when: false
+
+    - name: Display current cert-manager version
+      ansible.builtin.debug:
+        msg: "Current cert-manager version: {{ current_certmanager_version.stdout | default('unknown') }}"
+
+    - name: Update Helm repo
+      ansible.builtin.shell: |
+        helm repo update jetstack
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Upgrade cert-manager
+      ansible.builtin.shell: |
+        helm upgrade cert-manager jetstack/cert-manager \
+          --namespace cert-manager \
+          --version {{ cert_manager_version }} \
+          --set crds.enabled=true \
+          --set startupapicheck.enabled=false
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for cert-manager rollout
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "cert-manager upgraded to {{ cert_manager_version }}"
+
+# Upgrade Rancher
+- name: "Upgrade Rancher"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: true
+  tags:
+    - rancher
+  tasks:
+    - name: Get current Rancher version
+      ansible.builtin.shell: |
+        helm list -n cattle-system -o json | jq -r '.[0].chart' | cut -d- -f2
+      register: current_rancher_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+      failed_when: false
+
+    - name: Display current Rancher version
+      ansible.builtin.debug:
+        msg: "Current Rancher version: {{ current_rancher_version.stdout | default('unknown') }}"
+
+    - name: Update Helm repo
+      ansible.builtin.shell: |
+        helm repo update rancher-stable
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Upgrade Rancher
+      ansible.builtin.shell: |
+        helm upgrade rancher rancher-stable/rancher \
+          --namespace cattle-system \
+          --set hostname={{ rancher_hostname }} \
+          --set ingress.tls.source=rancher \
+          --set ingress.ingressClassName=nginx
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for Rancher rollout
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/rancher -n cattle-system --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get new Rancher version
+      ansible.builtin.shell: |
+        helm list -n cattle-system -o json | jq -r '.[0].chart' | cut -d- -f2
+      register: new_rancher_version
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display upgrade result
+      ansible.builtin.debug:
+        msg: "Rancher upgraded: {{ current_rancher_version.stdout | default('unknown') }} -> {{ new_rancher_version.stdout }}"
+
+# Post-upgrade: Verify cluster health
+- name: "Post-upgrade: Verify cluster health"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: false
+  tags:
+    - verify
+    - always
+  tasks:
+    - name: Check all nodes are Ready
+      ansible.builtin.shell: |
+        kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+      register: node_status
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display node status
+      ansible.builtin.debug:
+        msg: "{{ node_status.stdout_lines }}"
+
+    - name: Check for pods not Running
+      ansible.builtin.shell: |
+        kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | grep -v "^NAMESPACE" || echo "All pods healthy"
+      register: unhealthy_pods
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Display unhealthy pods (if any)
+      ansible.builtin.debug:
+        msg: "{{ unhealthy_pods.stdout_lines }}"
+
+    - name: Get component versions
+      ansible.builtin.shell: |
+        echo "=== Component Versions ==="
+        echo "K3s: $(k3s --version | head -1 | awk '{print $3}')"
+        echo "KubeVIP: $(kubectl get daemonset kube-vip -n kube-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2)"
+        echo "MetalLB: $(kubectl get deployment controller -n metallb-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2)"
+        echo "Longhorn: $(kubectl get deployment longhorn-driver-deployer -n longhorn-system -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d: -f2)"
+        echo "ingress-nginx: $(helm list -n ingress-nginx -o json | jq -r '.[0].app_version')"
+        echo "cert-manager: $(helm list -n cert-manager -o json | jq -r '.[0].app_version')"
+        echo "Rancher: $(helm list -n cattle-system -o json | jq -r '.[0].app_version')"
+      register: versions
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Display component versions
+      ansible.builtin.debug:
+        msg: "{{ versions.stdout_lines }}"

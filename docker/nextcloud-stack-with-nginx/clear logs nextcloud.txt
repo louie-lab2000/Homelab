@@ -1,0 +1,5 @@
+/var/log/apache2
+
+docker exec --user www-data nextcloud truncate /var/www/html/data/nextcloud.log --size 0
+
+sudo -u www-data truncate /var/nextcloud_data/nextcloud.log --size 0

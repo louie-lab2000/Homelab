@@ -1,0 +1,97 @@
+---
+- name: Display cert-manager installation information
+  ansible.builtin.debug:
+    msg: "Installing cert-manager {{ cert_manager_version }}"
+
+- name: Add jetstack Helm repository
+  ansible.builtin.shell: |
+    helm repo add jetstack https://charts.jetstack.io
+    helm repo update
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Create cert-manager namespace
+  ansible.builtin.shell: |
+    kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Check if cert-manager is already installed
+  ansible.builtin.shell: |
+    helm list -n cert-manager -q | grep -q cert-manager && echo "installed" || echo "not installed"
+  register: cert_manager_check
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: false
+
+# NOTE: startupapicheck.enabled=false prevents timeout issues during install
+- name: Install cert-manager via Helm
+  ansible.builtin.shell: |
+    helm install cert-manager jetstack/cert-manager \
+      --namespace cert-manager \
+      --version {{ cert_manager_version }} \
+      --set crds.enabled=true \
+      --set startupapicheck.enabled=false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: cert_manager_check.stdout == "not installed"
+
+- name: Wait for cert-manager controller to be ready
+  ansible.builtin.shell: |
+    kubectl wait --namespace cert-manager \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 10
+
+- name: Wait for cert-manager webhook to be ready
+  ansible.builtin.shell: |
+    kubectl wait --namespace cert-manager \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=webhook \
+      --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 10
+
+- name: Wait for cert-manager cainjector to be ready
+  ansible.builtin.shell: |
+    kubectl wait --namespace cert-manager \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=cainjector \
+      --timeout=300s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  retries: 3
+  delay: 10
+
+- name: Verify cert-manager CRDs are installed
+  ansible.builtin.shell: |
+    kubectl get crd | grep cert-manager | wc -l
+  register: crd_count
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  until: crd_count.stdout | int >= 6
+  retries: 10
+  delay: 5
+
+- name: Display cert-manager pods
+  ansible.builtin.shell: kubectl get pods -n cert-manager
+  register: cert_manager_pods
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Show cert-manager pods
+  ansible.builtin.debug:
+    msg: "{{ cert_manager_pods.stdout_lines }}"
+
+- name: cert-manager installation complete
+  ansible.builtin.debug:
+    msg: |
+      cert-manager has been installed successfully!
+      Version: {{ cert_manager_version }}
+      CRDs installed: {{ crd_count.stdout }}
