@@ -8,8 +8,8 @@ Infrastructure-as-code for my homelab environment. Docker Compose files, Ansible
 ├── docker/       # Docker Compose stacks with sanitized configs
 ├── ansible/      # Ansible playbooks and roles
 ├── k3s/          # Kubernetes manifests
-├── docs/         # Architecture and runbooks
-└── scripts/      # Utility scripts
+├── scripts/      # Utility scripts
+└── docs/         # Architecture, runbooks, and other documentation
 ```
 
 ## Secrets Management
