@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
 
   alertmanager:
-    image: prom/alertmanager:main
+    image: prom/alertmanager:latest
     container_name: alertmanager
     restart: unless-stopped
     ports:
@@ -79,23 +79,23 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
       device: ":/volume1/Grafana-Alertmanager"
   prometheus_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
       device: ":/volume1/Grafana-Prometheus"
   loki_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
       device: ":/volume1/Grafana-Loki"
   grafana_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime"
+      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
       device: ":/volume1/Grafana-Data"

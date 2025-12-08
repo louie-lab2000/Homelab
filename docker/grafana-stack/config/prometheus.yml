@@ -6,61 +6,201 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
-            - 192.168.51.20:9093
+            - alertmanager:9093
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
 
 scrape_configs:
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
+        labels:
+          instance: "prometheus"
+          group: "monitoring"
+          description: "Prometheus server"
 
-  - job_name: 'node_exporter'
+  - job_name: "node_exporter"
+    static_configs:
+      # Proxmox hosts
+      - targets: ["pve-01:9100"]
+        labels:
+          instance: "pve-01"
+          group: "proxmox"
+          description: "Primary compute node - Ryzen 5 Pro"
+      - targets: ["pve-02:9100"]
+        labels:
+          instance: "pve-02"
+          group: "proxmox"
+          description: "K3s host - HP Elite Mini"
+      - targets: ["pve-03:9100"]
+        labels:
+          instance: "pve-03"
+          group: "proxmox"
+          description: "Planned for elimination"
+      - targets: ["pve-10:9100"]
+        labels:
+          instance: "pve-10"
+          group: "proxmox"
+          description: "Edge server - pfSense and stable services"
+
+      # Docker hosts
+      - targets: ["docker-int:9100"]
+        labels:
+          instance: "docker-int"
+          group: "docker"
+          description: "Internal Docker host"
+      - targets: ["docker-edge:9100"]
+        labels:
+          instance: "docker-edge"
+          group: "docker"
+          description: "Edge Docker host"
+
+      # Web servers
+      - targets: ["forum:9100"]
+        labels:
+          instance: "forum"
+          group: "web"
+          description: "Discourse forum"
+      - targets: ["blog2:9100"]
+        labels:
+          instance: "blog2"
+          group: "web"
+          description: "Blog server"
+      - targets: ["www.leeannperugini.com:9100"]
+        labels:
+          instance: "www.leeannperugini.com"
+          group: "web"
+          description: "Lee-Ann's food blog - production"
+      - targets: ["test.leeannperugini.com:9100"]
+        labels:
+          instance: "test.leeannperugini.com"
+          group: "web"
+          description: "Lee-Ann's food blog - test"
+
+      # K3s cluster
+      - targets: ["node-1:9100"]
+        labels:
+          instance: "node-1"
+          group: "k3s"
+          description: "K3s node 1"
+      - targets: ["node-2:9100"]
+        labels:
+          instance: "node-2"
+          group: "k3s"
+          description: "K3s node 2"
+      - targets: ["node-3:9100"]
+        labels:
+          instance: "node-3"
+          group: "k3s"
+          description: "K3s node 3"
+      - targets: ["admin:9100"]
+        labels:
+          instance: "admin"
+          group: "k3s"
+          description: "K3s admin node"
+
+      # Network
+      - targets: ["192.168.51.1:9100"]
+        labels:
+          instance: "pfsense"
+          group: "network"
+          description: "pfSense firewall"
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["docker-int:8080"]
+        labels:
+          instance: "docker-int"
+          group: "docker"
+          description: "Docker containers - internal"
+      - targets: ["docker-edge:8082"]
+        labels:
+          instance: "docker-edge"
+          group: "docker"
+          description: "Docker containers - edge"
+
+  - job_name: "promtail"
+    static_configs:
+      # Proxmox hosts
+      - targets: ["pve-01:9080"]
+        labels:
+          instance: "pve-01"
+          group: "proxmox"
+      - targets: ["pve-02:9080"]
+        labels:
+          instance: "pve-02"
+          group: "proxmox"
+      - targets: ["pve-03:9080"]
+        labels:
+          instance: "pve-03"
+          group: "proxmox"
+      - targets: ["pve-10:9080"]
+        labels:
+          instance: "pve-10"
+          group: "proxmox"
+
+      # Docker hosts
+      - targets: ["docker-int:9080"]
+        labels:
+          instance: "docker-int"
+          group: "docker"
+      - targets: ["docker-edge:9080"]
+        labels:
+          instance: "docker-edge"
+          group: "docker"
+
+      # Web servers
+      - targets: ["forum:9080"]
+        labels:
+          instance: "forum"
+          group: "web"
+      - targets: ["blog2:9080"]
+        labels:
+          instance: "blog2"
+          group: "web"
+      - targets: ["www.leeannperugini.com:9080"]
+        labels:
+          instance: "www.leeannperugini.com"
+          group: "web"
+      - targets: ["test.leeannperugini.com:9080"]
+        labels:
+          instance: "test.leeannperugini.com"
+          group: "web"
+
+      # K3s cluster
+      - targets: ["node-1:9080"]
+        labels:
+          instance: "node-1"
+          group: "k3s"
+      - targets: ["node-2:9080"]
+        labels:
+          instance: "node-2"
+          group: "k3s"
+      - targets: ["node-3:9080"]
+        labels:
+          instance: "node-3"
+          group: "k3s"
+      - targets: ["admin:9080"]
+        labels:
+          instance: "admin"
+          group: "k3s"
+
+  - job_name: "blackbox_icmp"
+    metrics_path: /probe
+    params:
+      module: [icmp]
     static_configs:
       - targets:
-          - 192.168.10.2:9100
-          - 192.168.10.3:9100
-          - 192.168.10.4:9100
-          - 192.168.50.3:9100
-          - 192.168.50.2:9100
-          - 192.168.51.20:9100
-          - 192.168.50.20:9100
-          - 192.168.50.22:9100
-          - 192.168.50.25:9100
-          - 192.168.50.26:9100
-          - 192.168.50.31:9100
-          - 192.168.50.32:9100
-          - 192.168.50.33:9100
-          - 192.168.50.34:9100
-          - 192.168.50.35:9100
-          - 192.168.50.36:9100
-          - 192.168.51.30:9100
-          - 192.168.10.10:9100
-          - 192.168.51.1:9100
-
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets:
-          - 192.168.50.3:8080
-          - 192.168.50.2:8080
-          - 192.168.51.20:8080
-
-  - job_name: 'promtail'
-    static_configs:
-      - targets:
-          - 192.168.10.2:9080
-          - 192.168.10.3:9080
-          - 192.168.10.4:9080
-          - 192.168.50.3:9080
-          - 192.168.50.2:9080
-          - 192.168.51.20:9080
-          - 192.168.50.20:9080
-          - 192.168.50.22:9080
-          - 192.168.50.25:9080
-          - 192.168.50.26:9080
-          - 192.168.50.31:9080
-          - 192.168.50.32:9080
-          - 192.168.50.33:9080
-          - 192.168.50.34:9080
-          - 192.168.50.35:9080
-          - 192.168.50.36:9080
-          - 192.168.51.30:9080
-          - 192.168.10.10:9080
+          - 1.1.1.1
+          - 1.0.0.1
+        labels:
+          group: "cloudflare"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: docker-edge:9115

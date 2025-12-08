@@ -1,0 +1,37 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://192.168.51.20:3100/loki/api/v1/push
+
+scrape_configs:
+  # System logs - captures syslog, auth.log, and other Debian logs
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: __HOSTNAME__
+          __path__: /var/log/{syslog,auth.log,kern.log,daemon.log,user.log,messages,*.log}
+
+  # Docker container logs (only on hosts running Docker)
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: __HOSTNAME__
+          __path__: /var/lib/docker/containers/*/*.log
+    pipeline_stages:
+      - docker: {}
+      - regex:
+          source: filename
+          expression: '/var/lib/docker/containers/(?P<container_id>[^/]+)/.*\.log'
+      - labels:
+          container_id:
