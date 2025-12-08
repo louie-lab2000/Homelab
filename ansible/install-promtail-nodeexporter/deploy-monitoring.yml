@@ -1,0 +1,109 @@
+---
+# Ansible playbook to deploy promtail and node_exporter across homelab
+# Run with: ansible-playbook -i inventory deploy-monitoring.yml
+
+- name: Deploy monitoring agents (promtail + node_exporter)
+  hosts: all
+  become: true
+
+  handlers:
+    - name: Restart promtail
+      ansible.builtin.systemd:
+        name: promtail
+        state: restarted
+        daemon_reload: true
+
+    - name: Restart node_exporter
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        state: restarted
+
+  tasks:
+    # --- Grafana APT Repository Setup ---
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Remove old Grafana GPG key (if exists)
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/grafana.gpg
+        state: absent
+
+    - name: Download Grafana GPG key
+      ansible.builtin.shell: |
+        wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
+      args:
+        creates: /etc/apt/keyrings/grafana.gpg
+
+    - name: Add Grafana apt repository
+      ansible.builtin.copy:
+        content: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+        dest: /etc/apt/sources.list.d/grafana.list
+        mode: '0644'
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    # --- Install Packages ---
+    - name: Install promtail and node_exporter
+      ansible.builtin.apt:
+        name:
+          - promtail
+          - prometheus-node-exporter
+        state: present
+
+    # --- Configure promtail ---
+    - name: Ensure promtail positions directory exists
+      ansible.builtin.file:
+        path: /var/lib/promtail
+        state: directory
+        owner: promtail
+        group: promtail
+        mode: '0755'
+
+    - name: Deploy promtail config (Docker hosts)
+      ansible.builtin.template:
+        src: templates/promtail-config-docker.yml.j2
+        dest: /etc/promtail/config.yml
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['docker_hosts']
+      notify: Restart promtail
+
+    - name: Deploy promtail config (non-Docker hosts)
+      ansible.builtin.template:
+        src: templates/promtail-config.yml.j2
+        dest: /etc/promtail/config.yml
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname not in groups['docker_hosts']
+      notify: Restart promtail
+
+    # --- Enable and Start Services ---
+    - name: Enable and start promtail
+      ansible.builtin.systemd:
+        name: promtail
+        enabled: true
+        state: started
+
+    - name: Enable and start node_exporter
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        enabled: true
+        state: started
+
+    # --- Verify Services ---
+    - name: Wait for promtail to be ready
+      ansible.builtin.wait_for:
+        port: 9080
+        timeout: 30
+
+    - name: Wait for node_exporter to be ready
+      ansible.builtin.wait_for:
+        port: 9100
+        timeout: 30
