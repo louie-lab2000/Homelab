@@ -1,49 +1,51 @@
-# Daily APT Update
+# Daily APT Maintenance
 
-Automated APT updates and cleanup for Debian hosts.
+Automated APT updates, cleanup, and conditional reboots for Debian/Proxmox hosts.
 
-## Playbooks
+## Playbook
 
 | Playbook | Description |
 |----------|-------------|
-| `apt-update.yml` | Run `apt update && apt upgrade` |
-| `apt-autoremove.yml` | Clean up unused packages |
+| `apt-maintenance.yml` | Update packages, autoremove unused packages, reboot Proxmox hosts if required |
 
-## Scripts
+## Script
 
 | Script | Description |
 |--------|-------------|
-| `ansible.sh` | Wrapper to run apt-update.yml |
-| `autoremove.sh` | Wrapper to run apt-autoremove.yml |
+| `apt-maintenance.sh` | Wrapper to run apt-maintenance.yml |
 
-## Inventory
+## Behavior
 
-Update `inventory` with your Debian hosts:
+- All hosts: `apt update && apt dist-upgrade`, then `apt autoremove`
+- Proxmox hosts only: Reboot if `/var/run/reboot-required` exists
+- `proxmox_edge` group: Updates only, no automatic reboot (manual control)
 
-```ini
-[debian]
-host1 ansible_host=192.168.x.x
-host2 ansible_host=192.168.x.x
-```
+## Inventory Groups
+
+| Group | Reboot Behavior |
+|-------|-----------------|
+| `proxmox` | Conditional reboot |
+| `proxmox_edge` | No automatic reboot |
+| `webservers` | No reboot |
+| `lxc_containers` | No reboot |
 
 ## Scheduling
 
-Add to cron on your Ansible control node:
+Add to cron on your Ansible control node (pve-03):
 
 ```bash
-# Daily updates at 3am
-0 3 * * * /path/to/ansible.sh
-
-# Weekly cleanup on Sundays at 4am
-0 4 * * 0 /path/to/autoremove.sh
+30 3 * * * /home/louie/ansible/apt-maintenance/apt-maintenance.sh >> /home/louie/log/crontab.log 2>&1
 ```
 
 ## Usage
 
 ```bash
 # Manual run
-ansible-playbook -i inventory apt-update.yml
+ansible-playbook apt-maintenance.yml
+
+# Dry run (check mode)
+ansible-playbook apt-maintenance.yml --check
 
 # With the wrapper script
-./ansible.sh
+./apt-maintenance.sh
 ```
