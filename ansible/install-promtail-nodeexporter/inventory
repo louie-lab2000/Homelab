@@ -1,12 +1,12 @@
 # Homelab inventory for monitoring deployment
-# Uses existing ansible.cfg settings (key, log path, etc.)
+# Run from ansible.louielab.cc
 
 [proxmox]
 pve-01.louielab.cc ansible_user=root
 pve-02.louielab.cc ansible_user=root
 pve-03.louielab.cc ansible_user=root
-#pve-04.louielab.cc ansible_user=root  # sandbox, usually offline
 pve-10.louielab.cc ansible_user=root
+# pve-04.louielab.cc ansible_user=root  # sandbox, usually offline
 
 [docker_hosts]
 docker-int.louielab.cc ansible_user=ansible
@@ -26,7 +26,7 @@ node-3.louielab.cc ansible_user=ansible
 admin.louielab.cc ansible_user=ansible
 
 [infra]
-localhost ansible_connection=local ansible_user=ansible
+ansible.louielab.cc ansible_connection=local ansible_user=ansible
 # backup51 excluded - SSH may be disabled
 
 [all:vars]

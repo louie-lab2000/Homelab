@@ -1,0 +1,66 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: {{ loki_url }}
+
+scrape_configs:
+  # Systemd journal (syslog, auth, kernel, services)
+  - job_name: journal
+    journal:
+      max_age: 12h
+      labels:
+        job: systemd-journal
+        host: {{ inventory_hostname_short }}
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: unit
+      - source_labels: ['__journal_priority_keyword']
+        target_label: priority
+
+  # General var logs
+  - job_name: varlogs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: {{ inventory_hostname_short }}
+          __path__: /var/log/*.log
+
+  # Apache access logs
+  - job_name: apache-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: apache
+          logtype: access
+          host: {{ inventory_hostname_short }}
+          __path__: /var/log/apache2/access*.log
+
+  # Apache error logs
+  - job_name: apache-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: apache
+          logtype: error
+          host: {{ inventory_hostname_short }}
+          __path__: /var/log/apache2/error*.log
+
+  # Apache other logs (ssl, etc)
+  - job_name: apache-other
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: apache
+          logtype: other
+          host: {{ inventory_hostname_short }}
+          __path__: /var/log/apache2/other_vhosts*.log

@@ -15,13 +15,20 @@ Monitoring stack with Prometheus, Loki, Grafana, Alertmanager, and cAdvisor.
 ## Configuration Files
 
 ```
-config/
+grafana-stack/
+├── docker-compose.yml    # Service definitions
 ├── prometheus.yml        # Scrape targets and alerting config
 ├── loki-config.yml       # Loki storage and retention settings
-└── promtail-config.yml   # Log collection config (for reference)
+└── README.md
 ```
 
-Note: `promtail-config.yml` is included for reference. Promtail runs separately on each host that sends logs to Loki.
+## Promtail
+
+Promtail is deployed separately on each host via Ansible. See `ansible/deploy-monitoring/` for:
+- Playbook to install promtail and node_exporter
+- Host-specific templates (proxmox, docker, k3s, web, base)
+
+Promtail uses **journal-based** scraping (Debian 13 and Proxmox are journal-only).
 
 ## Private Configuration
 
@@ -68,7 +75,27 @@ cd ~/homelab/docker/grafana-stack
 docker compose up -d
 ```
 
+## cAdvisor on docker-edge
+
+docker-edge runs cAdvisor standalone (not in compose). Deploy with:
+
+```bash
+docker run -d \
+  --name cadvisor \
+  --restart unless-stopped \
+  -p 8082:8080 \
+  -v /:/rootfs:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /sys:/sys:ro \
+  -v /var/lib/docker/:/var/lib/docker:ro \
+  gcr.io/cadvisor/cadvisor:v0.51.0
+```
+
+Note: Uses port 8082 to avoid conflict with other services.
+
 ## Notes
 
 - Loki retention is set to 7 days
 - Prometheus scrape interval is 15 seconds
+- cAdvisor pinned to v0.51.0 (required for Docker API compatibility)
+- cAdvisor mount is `/var/run/docker.sock` not `/var/run` (fixes container name labels)
