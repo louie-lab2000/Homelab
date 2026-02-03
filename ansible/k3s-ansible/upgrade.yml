@@ -360,7 +360,9 @@
           --namespace cattle-system \
           --set hostname={{ rancher_hostname }} \
           --set ingress.tls.source=rancher \
-          --set ingress.ingressClassName=nginx
+          --set ingress.ingressClassName=nginx \
+          --set extraEnv[0].name=SSL_CERT_DIR \
+          --set extraEnv[0].value=/etc/ssl/certs
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 

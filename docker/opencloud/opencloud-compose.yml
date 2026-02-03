@@ -1,0 +1,61 @@
+services:
+  opencloud:
+    image: opencloudeu/opencloud:latest
+    container_name: opencloud
+    restart: unless-stopped
+    environment:
+      # Core settings
+      OC_INSECURE: "true"
+      OC_URL: "https://192.168.51.20:9201"
+      OC_LOG_LEVEL: "info"
+      PROXY_HTTP_ADDR: "0.0.0.0:9200"
+      
+      # Admin password - CHANGE THIS
+      INITIAL_ADMIN_PASSWORD: "changeme"
+      
+      # Collabora/WOPI integration
+      COLLABORATION_GRPC_ADDR: "0.0.0.0:9301"
+      COLLABORATION_HTTP_ADDR: "0.0.0.0:9300"
+      FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: "com.owncloud.api.collaboration.Collaboration"
+      
+      # Full-text search with Tika
+      SEARCH_EXTRACTOR_TYPE: "tika"
+      SEARCH_EXTRACTOR_TIKA_TIKA_URL: "http://tika:9998"
+      
+      # Additional services to start
+      START_ADDITIONAL_SERVICES: "collaboration"
+    volumes:
+      - /home/louie/opencloud/config:/etc/opencloud
+      - /home/louie/cloud/data:/var/lib/opencloud
+    ports:
+      - "9201:9200"
+      - "9300:9300"
+    depends_on:
+      - tika
+      - collabora
+
+  collabora:
+    image: collabora/code:latest
+    container_name: opencloud-collabora
+    restart: unless-stopped
+    environment:
+      # Allow connections from OpenCloud
+      aliasgroup1: "https://192.168.51.20:9201"
+      # Disable SSL on Collabora side (OpenCloud handles it)
+      extra_params: "--o:ssl.enable=false --o:ssl.termination=true --o:net.frame_ancestors=192.168.51.20:9201"
+      # Allow any server (for IP-based access)
+      server_name: "192.168.51.20"
+    cap_add:
+      - MKNOD
+    ports:
+      - "9980:9980"
+
+  tika:
+    image: apache/tika:latest-full
+    container_name: opencloud-tika
+    restart: unless-stopped
+    # No ports exposed - internal only
+
+networks:
+  default:
+    name: opencloud-net

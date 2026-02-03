@@ -2,20 +2,17 @@
 - name: Display Rancher installation information
   ansible.builtin.debug:
     msg: "Installing Rancher at https://{{ rancher_hostname }}"
-
 - name: Add rancher-stable Helm repository
   ansible.builtin.shell: |
     helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
     helm repo update
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
 - name: Create cattle-system namespace
   ansible.builtin.shell: |
     kubectl create namespace cattle-system --dry-run=client -o yaml | kubectl apply -f -
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
 - name: Check if Rancher is already installed
   ansible.builtin.shell: |
     helm list -n cattle-system -q | grep -q rancher && echo "installed" || echo "not installed"
@@ -23,7 +20,6 @@
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   changed_when: false
-
 - name: Install Rancher via Helm
   ansible.builtin.shell: |
     helm install rancher rancher-stable/rancher \
@@ -31,11 +27,12 @@
       --set hostname={{ rancher_hostname }} \
       --set bootstrapPassword={{ rancher_bootstrap_password }} \
       --set ingress.tls.source=rancher \
-      --set ingress.ingressClassName=nginx
+      --set ingress.ingressClassName=nginx \
+      --set extraEnv[0].name=SSL_CERT_DIR \
+      --set extraEnv[0].value=/etc/ssl/certs
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   when: rancher_check.stdout == "not installed"
-
 - name: Wait for Rancher deployment to be ready
   ansible.builtin.shell: |
     kubectl rollout status deployment rancher -n cattle-system --timeout=600s
@@ -43,7 +40,6 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   retries: 3
   delay: 30
-
 - name: Wait for Rancher ingress to get ADDRESS
   ansible.builtin.shell: |
     kubectl get ingress rancher -n cattle-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
@@ -53,35 +49,27 @@
   until: rancher_ingress_ip.stdout != ""
   retries: 30
   delay: 10
-
 - name: Display Rancher ingress
   ansible.builtin.shell: kubectl get ingress -n cattle-system
   register: rancher_ingress
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
 - name: Show Rancher ingress
   ansible.builtin.debug:
     msg: "{{ rancher_ingress.stdout_lines }}"
-
 - name: Display Rancher pods
   ansible.builtin.shell: kubectl get pods -n cattle-system
   register: rancher_pods
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
 - name: Show Rancher pods
   ansible.builtin.debug:
     msg: "{{ rancher_pods.stdout_lines }}"
-
 - name: Rancher installation complete
   ansible.builtin.debug:
     msg: |
       Rancher has been installed successfully!
-      
       URL: https://{{ rancher_hostname }}
       Bootstrap Password: {{ rancher_bootstrap_password }}
-      
       NOTE: Make sure DNS for {{ rancher_hostname }} points to {{ ingress_nginx_ip }}
-      
       You will be prompted to change the password on first login.

@@ -6,13 +6,13 @@ services:
       - "9090:9090"
     volumes:
       - /home/louie/grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /home/louie/grafana/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - type: volume
         source: prometheus_data
         target: /prometheus
         volume:
           nocopy: true
     restart: unless-stopped
-
   alertmanager:
     image: prom/alertmanager:latest
     container_name: alertmanager
@@ -29,7 +29,6 @@ services:
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
-
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -44,7 +43,6 @@ services:
         volume:
           nocopy: true
     restart: unless-stopped
-
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -61,7 +59,6 @@ services:
       - loki
       - alertmanager
     restart: unless-stopped
-
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: cadvisor
@@ -73,7 +70,6 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     restart: unless-stopped
-
 volumes:
   alertmanager_data:
     driver: local

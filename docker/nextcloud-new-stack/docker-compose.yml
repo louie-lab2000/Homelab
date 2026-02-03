@@ -1,0 +1,62 @@
+services:
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - nextclouddb
+      - redis
+    ports:
+      - 9091:80
+    environment:
+      - MYSQL_HOST=nextclouddb
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      - OVERWRITEPROTOCOL=https
+    volumes:
+      - type: volume
+        source: html
+        target: /var/www/html
+        volume:
+          nocopy: true
+      - type: volume
+        source: data
+        target: /var/www/html/data
+        volume:
+          nocopy: true
+
+  nextclouddb:
+    image: mariadb:11
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - /home/louie/nextcloud_2/db:/var/lib/mysql
+
+  redis:
+    image: redis:alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+
+volumes:
+  html:
+    driver_opts:
+      type: "nfs"
+      o: "addr=192.168.3.33,vers=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/mnt/pool_1/nextcloud/html"
+  data:
+    driver_opts:
+      type: "nfs"
+      o: "addr=192.168.3.33,vers=4,noatime,soft,timeo=30,retrans=3"
+      device: ":/mnt/pool_1/nextcloud/data"
+  redis:

@@ -1,0 +1,7 @@
+# Database passwords - change these!
+MYSQL_ROOT_PASSWORD=change_me_root_password
+MYSQL_PASSWORD=change_me_nextcloud_password
+
+# Trusted domains - add your access URLs
+# Separate multiple domains with spaces
+NEXTCLOUD_TRUSTED_DOMAINS=localhost docker-int.louielab.cc nextcloud2.louielab.cc

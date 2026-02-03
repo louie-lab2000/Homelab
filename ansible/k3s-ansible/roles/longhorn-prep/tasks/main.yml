@@ -1,62 +1,47 @@
 ---
 # =============================================================================
-# Longhorn Disk Preparation - Auto-detection by Size
+# Longhorn Disk Preparation - Auto-detection by Serial Number
 # =============================================================================
-# This role automatically finds the correct disk by size, avoiding the problem
-# of unstable /dev/sdX device names in virtualized environments.
+# This role automatically finds the correct disk by its SCSI serial number,
+# which is set in Proxmox when adding the disk (e.g., serial=LONGHORN).
+# This is more reliable than size-based detection.
 # =============================================================================
 
 - name: Display Longhorn disk preparation information
   ansible.builtin.debug:
     msg: |
       Starting Longhorn disk preparation on {{ inventory_hostname }}
-      Looking for disk with size: {{ longhorn_disk_size_gb }}GB
+      Looking for disk with SCSI serial: {{ longhorn_disk_serial }}
       Fallback device: {{ longhorn_disk_fallback }}
 
 # =============================================================================
-# Auto-detect the storage disk by size
+# Auto-detect the storage disk by SCSI serial number
 # =============================================================================
 
-- name: Get disk sizes for all block devices
+- name: Find disk by SCSI serial number
   ansible.builtin.shell: |
-    lsblk -b -d -n -o NAME,SIZE,TYPE | grep disk | while read name size type; do
-      echo "$name:$size"
+    for dev in /dev/sd?; do
+      serial=$(udevadm info --query=all --name=$dev 2>/dev/null | grep ID_SCSI_SERIAL | cut -d= -f2)
+      if [ "$serial" = "{{ longhorn_disk_serial }}" ]; then
+        echo "$dev"
+        exit 0
+      fi
     done
-  register: disk_sizes_raw
+  register: serial_detection
   changed_when: false
+  failed_when: false
 
-- name: Parse disk sizes and find matching disk
-  ansible.builtin.set_fact:
-    detected_longhorn_disk: >-
-      {%- set target_bytes = longhorn_disk_size_gb | int * 1024 * 1024 * 1024 -%}
-      {%- set tolerance = 0.10 -%}
-      {%- set min_size = (target_bytes * (1 - tolerance)) | int -%}
-      {%- set max_size = (target_bytes * (1 + tolerance)) | int -%}
-      {%- set ns = namespace(found='') -%}
-      {%- for line in disk_sizes_raw.stdout_lines -%}
-        {%- set parts = line.split(':') -%}
-        {%- if parts | length == 2 -%}
-          {%- set disk_name = parts[0] -%}
-          {%- set disk_size = parts[1] | int -%}
-          {%- if disk_size >= min_size and disk_size <= max_size -%}
-            {%- set ns.found = '/dev/' ~ disk_name -%}
-          {%- endif -%}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ ns.found }}
-
-- name: Display detected disk
+- name: Display serial detection result
   ansible.builtin.debug:
     msg: |
-      Disk detection results on {{ inventory_hostname }}:
-      - Target size: {{ longhorn_disk_size_gb }}GB
-      - Detected disk: {{ detected_longhorn_disk | default('NONE', true) }}
-      - All disks found: {{ disk_sizes_raw.stdout_lines }}
+      Serial detection on {{ inventory_hostname }}:
+      - Looking for serial: {{ longhorn_disk_serial }}
+      - Found device: {{ serial_detection.stdout | default('NONE', true) }}
 
 # Use detected disk, or fall back to configured value
 - name: Set final Longhorn disk path
   ansible.builtin.set_fact:
-    longhorn_disk: "{{ detected_longhorn_disk if detected_longhorn_disk else longhorn_disk_fallback }}"
+    longhorn_disk: "{{ serial_detection.stdout | trim if serial_detection.stdout else longhorn_disk_fallback }}"
 
 - name: Display final disk selection
   ansible.builtin.debug:
@@ -76,13 +61,12 @@
     msg: |
       ERROR: Disk {{ longhorn_disk }} does not exist on {{ inventory_hostname }}!
       
-      Auto-detection looked for a disk of size {{ longhorn_disk_size_gb }}GB.
-      Available disks: {{ disk_sizes_raw.stdout_lines }}
+      Auto-detection looked for a disk with SCSI serial: {{ longhorn_disk_serial }}
       
       Possible solutions:
-      1. Verify the VM has a second disk attached
-      2. Adjust 'longhorn_disk_size_gb' in group_vars/all.yml
-      3. Set 'longhorn_disk_fallback' to the correct device path
+      1. Verify the VM has a second disk attached with serial={{ longhorn_disk_serial }}
+      2. In Proxmox, add disk with: qm set <VMID> -scsi1 <storage>:<size>,serial={{ longhorn_disk_serial }}
+      3. Set 'longhorn_disk_fallback' to the correct device path in group_vars/all.yml
   when: not disk_check.stat.exists
 
 - name: Get selected disk size for verification
@@ -90,12 +74,12 @@
   register: selected_disk_size
   changed_when: false
 
-- name: Verify disk size is reasonable
+- name: Verify disk details
   ansible.builtin.debug:
     msg: |
       Verified disk {{ longhorn_disk }}:
       - Size: {{ (selected_disk_size.stdout | int / 1024 / 1024 / 1024) | round(1) }}GB
-      - Expected: ~{{ longhorn_disk_size_gb }}GB
+      - Serial: {{ longhorn_disk_serial }}
 
 # =============================================================================
 # Partition and format the disk

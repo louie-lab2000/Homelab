@@ -1,0 +1,34 @@
+services:
+  opencloud:
+    image: opencloudeu/opencloud:latest
+    container_name: opencloud
+    restart: unless-stopped
+    environment:
+      # Core settings
+      OC_INSECURE: "true"
+      OC_URL: "https://192.168.51.20:9201"
+      OC_LOG_LEVEL: "info"
+      PROXY_HTTP_ADDR: "0.0.0.0:9200"
+      
+      # Admin password - CHANGE THIS
+      INITIAL_ADMIN_PASSWORD: "changeme"
+      
+      # Full-text search with Tika
+      SEARCH_EXTRACTOR_TYPE: "tika"
+      SEARCH_EXTRACTOR_TIKA_TIKA_URL: "http://tika:9998"
+    volumes:
+      - /home/louie/opencloud/config:/etc/opencloud
+      - /home/louie/cloud/data:/var/lib/opencloud
+    ports:
+      - "9201:9200"
+    depends_on:
+      - tika
+
+  tika:
+    image: apache/tika:latest-full
+    container_name: opencloud-tika
+    restart: unless-stopped
+
+networks:
+  default:
+    name: opencloud-net

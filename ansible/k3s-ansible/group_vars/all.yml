@@ -19,29 +19,27 @@ k3s_token: ""
 # KubeVIP Configuration
 # =============================================================================
 
-kubevip_version: "v1.0.2"
+kubevip_version: "v1.0.3"
 kubevip_image: "ghcr.io/kube-vip/kube-vip:{{ kubevip_version }}"
 
 # =============================================================================
 # MetalLB Configuration
 # =============================================================================
 
-metallb_version: "v0.15.2"
+metallb_version: "v0.15.3"
 metallb_ip_range: "192.168.50.60-192.168.50.100"
 
 # =============================================================================
 # Longhorn Configuration
 # =============================================================================
 
-longhorn_version: "v1.7.2"
+longhorn_version: "v1.10.1"
 
-# Disk auto-detection by size (recommended)
-# The playbook will automatically find a disk matching this size (±10% tolerance)
-# This avoids problems with unstable /dev/sdX device names in VMs
-longhorn_disk_size_gb: 200
+# Disk auto-detection by SCSI serial number (recommended)
+# This matches the serial set in Proxmox: qm set <VMID> -scsi1 <storage>:<size>,serial=LONGHORN
+longhorn_disk_serial: "LONGHORN"
 
 # Fallback device path if auto-detection fails
-# This is only used if no disk matching the target size is found
 longhorn_disk_fallback: "/dev/sdb"
 
 longhorn_mount_point: "/var/lib/longhorn"
@@ -96,11 +94,9 @@ kernel_modules:
   - ip_vs_sh
   - iscsi_tcp
 
-# Sysctl settings for Kubernetes networking
+# Sysctl settings for Kubernetes networking (IPv4 only - IPv6 disabled network-wide)
 sysctl_settings:
   - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
-  - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
   - { key: "net.ipv4.ip_forward", value: "1" }
-  - { key: "net.ipv6.conf.all.forwarding", value: "1" }
   - { key: "fs.inotify.max_user_watches", value: "524288" }
   - { key: "fs.inotify.max_user_instances", value: "512" }

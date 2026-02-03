@@ -63,6 +63,63 @@
     - k3s-join
     - phase4
 
+# Phase 4.5: Configure CoreDNS to filter IPv6 (AAAA records)
+# This prevents connection delays when IPv6 is disabled at the network level
+- name: "Phase 4.5: Configure CoreDNS IPv6 filtering"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tags:
+    - coredns
+    - phase4
+  tasks:
+    - name: Wait for CoreDNS to be ready
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/coredns -n kube-system --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Get current CoreDNS configmap
+      ansible.builtin.shell: |
+        kubectl get configmap coredns -n kube-system -o jsonpath='{.data.Corefile}'
+      register: coredns_config
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Check if IPv6 filtering already configured
+      ansible.builtin.set_fact:
+        ipv6_filter_exists: "{{ 'template IN AAAA' in coredns_config.stdout }}"
+
+    - name: Patch CoreDNS to filter AAAA records
+      ansible.builtin.shell: |
+        # Get current Corefile
+        COREFILE=$(kubectl get configmap coredns -n kube-system -o jsonpath='{.data.Corefile}')
+        
+        # Insert template block after 'ready' line
+        PATCHED=$(echo "$COREFILE" | awk '/^[[:space:]]*ready[[:space:]]*$/ { print; print "    template IN AAAA {\n      rcode NOERROR\n    }"; next } { print }')
+        
+        # Apply the patched configmap
+        kubectl create configmap coredns -n kube-system \
+          --from-literal=Corefile="$PATCHED" \
+          --from-literal=NodeHosts="$(kubectl get configmap coredns -n kube-system -o jsonpath='{.data.NodeHosts}')" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: not ipv6_filter_exists
+
+    - name: Restart CoreDNS to apply changes
+      ansible.builtin.shell: |
+        kubectl rollout restart deployment/coredns -n kube-system
+        kubectl rollout status deployment/coredns -n kube-system --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: not ipv6_filter_exists
+
+    - name: Display CoreDNS configuration status
+      ansible.builtin.debug:
+        msg: "{{ 'CoreDNS IPv6 filtering already configured' if ipv6_filter_exists else 'CoreDNS patched to filter IPv6 (AAAA) records' }}"
+
 # Phase 5: Install MetalLB
 - name: "Phase 5: Install MetalLB"
   hosts: k3s_initial_master
@@ -74,6 +131,45 @@
   tags:
     - metallb
     - phase5
+
+# Phase 5.5: Wait for MetalLB to be fully ready
+- name: "Phase 5.5: Wait for MetalLB readiness"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tags:
+    - metallb
+    - phase5
+  tasks:
+    - name: Wait for MetalLB controller deployment
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/controller -n metallb-system --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for MetalLB speaker pods on all nodes
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app=metallb,component=speaker -n metallb-system --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Pause for MetalLB to stabilize
+      ansible.builtin.pause:
+        seconds: 15
+        prompt: "Waiting for MetalLB to stabilize..."
+
+    - name: Verify MetalLB speakers are running on all nodes
+      ansible.builtin.shell: |
+        EXPECTED=$(kubectl get nodes --no-headers | wc -l)
+        ACTUAL=$(kubectl get pods -n metallb-system -l component=speaker --field-selector=status.phase=Running --no-headers | wc -l)
+        if [ "$ACTUAL" -lt "$EXPECTED" ]; then
+          echo "Only $ACTUAL of $EXPECTED speaker pods running"
+          exit 1
+        fi
+        echo "All $ACTUAL speaker pods running"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 # Phase 6: Prepare Longhorn storage on all nodes
 - name: "Phase 6: Prepare Longhorn storage disks"
@@ -122,6 +218,66 @@
   tags:
     - cert-manager
     - phase9
+
+# Phase 9.5: Wait for cert-manager to be fully ready
+- name: "Phase 9.5: Wait for cert-manager readiness"
+  hosts: k3s_initial_master
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tags:
+    - cert-manager
+    - rancher
+    - phase9
+  tasks:
+    - name: Wait for cert-manager deployments
+      ansible.builtin.shell: |
+        kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
+        kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
+        kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for cert-manager webhook to be ready
+      ansible.builtin.shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=webhook -n cert-manager --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Pause for cert-manager webhook to stabilize
+      ansible.builtin.pause:
+        seconds: 30
+        prompt: "Waiting for cert-manager webhook to stabilize before Rancher install..."
+
+    - name: Verify cert-manager is working (create test issuer)
+      ansible.builtin.shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: cert-manager-test
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: test-selfsigned
+          namespace: cert-manager-test
+        spec:
+          selfSigned: {}
+        EOF
+        sleep 5
+        kubectl get issuer -n cert-manager-test test-selfsigned -o jsonpath='{.status.conditions[0].status}' | grep -q "True"
+        kubectl delete namespace cert-manager-test
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: cert_manager_test
+      retries: 3
+      delay: 10
+      until: cert_manager_test.rc == 0
+
+    - name: cert-manager verified ready
+      ansible.builtin.debug:
+        msg: "cert-manager webhook is responding and ready for Rancher installation"
 
 # Phase 10: Install Rancher
 - name: "Phase 10: Install Rancher"
