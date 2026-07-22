@@ -1,0 +1,148 @@
+---
+# STEP 2 of 2 — Deploy Grafana Alloy across all homelab hosts
+#
+# Alloy replaces BOTH promtail (logs → Loki) AND node_exporter (metrics → Prometheus).
+# Metrics are PUSHED to Prometheus via remote_write (not scraped).
+# Logs are PUSHED to Loki directly.
+#
+# IMPORTANT: Prometheus must have remote write receiver enabled.
+# See the updated docker-compose.yml for the required flag:
+#   --web.enable-remote-write-receiver
+#
+# Run with: ansible-playbook deploy-monitoring.yml
+# (after running uninstall-monitoring.yml first)
+
+- name: Deploy Grafana Alloy (unified metrics + logs agent)
+  hosts: all
+  become: true
+
+  handlers:
+    - name: Restart alloy
+      ansible.builtin.systemd:
+        name: alloy
+        state: restarted
+        daemon_reload: true
+
+  tasks:
+    # --- Grafana APT Repository ---
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Remove old Grafana GPG key (if exists)
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/grafana.gpg
+        state: absent
+
+    - name: Download Grafana GPG key
+      ansible.builtin.shell: |
+        wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
+      args:
+        creates: /etc/apt/keyrings/grafana.gpg
+
+    - name: Add Grafana apt repository
+      ansible.builtin.copy:
+        content: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+        dest: /etc/apt/sources.list.d/grafana.list
+        mode: '0644'
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    # --- Install Alloy ---
+    - name: Install Grafana Alloy
+      ansible.builtin.apt:
+        name: alloy
+        state: present
+
+    # --- Permissions ---
+    - name: Add alloy user to systemd-journal group
+      ansible.builtin.user:
+        name: alloy
+        groups: systemd-journal
+        append: true
+      notify: Restart alloy
+
+    - name: Add alloy user to adm group (for /var/log access)
+      ansible.builtin.user:
+        name: alloy
+        groups: adm
+        append: true
+      notify: Restart alloy
+
+    # --- Deploy config by group ---
+    - name: Deploy Alloy config (Proxmox hosts)
+      ansible.builtin.template:
+        src: ../templates/alloy/alloy-proxmox.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['proxmox']
+      notify: Restart alloy
+
+    - name: Deploy Alloy config (Docker hosts)
+      ansible.builtin.template:
+        src: ../templates/alloy/alloy-docker.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['docker_hosts']
+      notify: Restart alloy
+
+    - name: Deploy Alloy config (K3s nodes)
+      ansible.builtin.template:
+        src: ../templates/alloy/alloy-k3s.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['k3s']
+      notify: Restart alloy
+
+    - name: Deploy Alloy config (Web servers)
+      ansible.builtin.template:
+        src: ../templates/alloy/alloy-web.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['web']
+      notify: Restart alloy
+
+    - name: Deploy Alloy config (Infra / backup)
+      ansible.builtin.template:
+        src: ../templates/alloy/alloy-infra.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['infra']
+      notify: Restart alloy
+
+    - name: Deploy Alloy config (LXC containers)
+      ansible.builtin.template:
+        src: ../templates/alloy/alloy-lxc.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname in groups['lxc']
+      notify: Restart alloy
+
+    # --- Enable and start ---
+    - name: Enable and start Alloy
+      ansible.builtin.systemd:
+        name: alloy
+        enabled: true
+        state: started
+
+    # --- Verify ---
+    - name: Wait for Alloy to be ready
+      ansible.builtin.wait_for:
+        port: 12345
+        timeout: 30

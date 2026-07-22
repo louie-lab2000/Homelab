@@ -1,0 +1,19 @@
+[Unit]
+Description=WordPress Prometheus Exporter
+Documentation=https://github.com/louielab/homelab
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/wp_exporter/wp_exporter.py
+Restart=always
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+
+# Runs as root so it can sudo -u www-data for WP-CLI.
+# The script itself drops to www-data for all WP-CLI calls.
+
+[Install]
+WantedBy=multi-user.target

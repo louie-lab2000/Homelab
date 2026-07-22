@@ -1,0 +1,5 @@
+# Fleet-wide defaults — overridden per-group where needed
+ansible_user: ansible
+ansible_ssh_private_key_file: ~/.ssh/ansible
+loki_url: http://backup.louielab.cc:3100/loki/api/v1/push
+prometheus_url: http://backup.louielab.cc:9090/api/v1/write

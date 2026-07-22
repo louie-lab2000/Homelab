@@ -1,0 +1,154 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+    - "alert_rules.yml"
+
+scrape_configs:
+
+  # ---------------------------------------------------------------------------
+  # PROMETHEUS SELF-MONITORING
+  # ---------------------------------------------------------------------------
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          instance: "prometheus"
+          group: "monitoring"
+          description: "Prometheus server"
+
+  # ---------------------------------------------------------------------------
+  # NOTE: No node_exporter scrape job for Ansible-managed hosts.
+  # All Ansible-managed hosts run Grafana Alloy, which pushes metrics
+  # directly to Prometheus via remote_write. No pull targets needed.
+  # ---------------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------------
+  # STORAGE — TrueNAS (pull-based, node_exporter via Portainer)
+  # VLAN 50 IP (192.168.50.33) — reachable from docker-int.
+  # ---------------------------------------------------------------------------
+  - job_name: "truenas"
+    static_configs:
+      - targets: ["192.168.50.33:9100"]
+        labels:
+          instance: "truenas"
+          group: "storage"
+          description: "TrueNAS SCALE 25.10 - primary NAS"
+
+  - job_name: "synology"
+    static_configs:
+      - targets: ["synology.louielab.cc:9100"]
+        labels:
+          instance: "synology"
+          group: "storage"
+          description: "Synology DS-1621+ - wife-critical storage"
+
+  # ---------------------------------------------------------------------------
+  # NETWORK — pfSense (pull-based, node_exporter package)
+  # Install via: pfSense UI → System → Package Manager → node_exporter
+  # Verify reachable: curl http://192.168.51.1:9100/metrics
+  # ---------------------------------------------------------------------------
+  - job_name: "pfsense"
+    static_configs:
+      - targets: ["192.168.51.1:9100"]
+        labels:
+          instance: "pfsense"
+          group: "network"
+          description: "pfSense firewall/router VM on pve-10"
+
+  # ---------------------------------------------------------------------------
+  # NETWORK — QNAP Switch (pull-based, SNMP via snmp_exporter)
+  # Requires: snmp-exporter container added to docker-compose on docker-int
+  # snmp.yml downloaded from prometheus/snmp_exporter releases
+  # Replace <qnap-mgmt-ip> with your switch management IP
+  # Community string: configured in snmp.yml (default: "public")
+  # ---------------------------------------------------------------------------
+  - job_name: "qnap_switch"
+    metrics_path: /snmp
+    params:
+      module: [if_mib]
+      auth: [metrics_v2]
+    static_configs:
+      - targets: ["192.168.1.10"]
+        labels:
+          instance: "qnap-switch"
+          group: "network"
+          description: "QNAP QSW-M3216R-8S8T - 10GbE backbone"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: docker-int.louielab.cc:9116
+
+  # ---------------------------------------------------------------------------
+  # NOTE: PBS is now monitored via Grafana Alloy (push-based), installed via
+  # Ansible with the alloy-lxc template. No pull scrape job needed.
+  # PBS-specific backup/datastore metrics via native endpoint were investigated
+  # but PBS 4.1 does not support the /api2/prometheus/metrics format.
+  # ---------------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------------
+  # CADVISOR — Docker container metrics (pull-based)
+  # ---------------------------------------------------------------------------
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["docker-int:8080"]
+        labels:
+          instance: "docker-int"
+          group: "docker"
+          description: "Docker containers - internal"
+      - targets: ["docker-edge:8082"]
+        labels:
+          instance: "docker-edge"
+          group: "docker"
+          description: "Docker containers - edge"
+
+  # ---------------------------------------------------------------------------
+  # BLACKBOX — ICMP ping probes
+  # ---------------------------------------------------------------------------
+  - job_name: "blackbox_icmp"
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 1.1.1.1
+          - 1.0.0.1
+        labels:
+          group: "cloudflare"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: docker-edge:9115
+
+  # ---------------------------------------------------------------------------
+  # BLACKBOX — HTTP website availability probes
+  # ---------------------------------------------------------------------------
+  - job_name: "blackbox_http"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://www.leeannperugini.com
+        labels:
+          group: "web"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: docker-edge:9115

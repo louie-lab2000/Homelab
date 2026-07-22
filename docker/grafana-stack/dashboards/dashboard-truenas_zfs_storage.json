@@ -1,0 +1,1563 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "truenas-zfs-storage",
+    "annotations": {
+      "grafana.app/folder": "ffhspqhvdw64gb"
+    }
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "Pool Used %",
+          "description": "ZFS performance degrades past ~80% full; keep pools below the yellow band.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=\"/mnt/fast\"} / node_filesystem_size_bytes{instance=\"truenas\", mountpoint=\"/mnt/fast\"}))",
+                        "legendFormat": "fast"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=\"/mnt/slow\"} / node_filesystem_size_bytes{instance=\"truenas\", mountpoint=\"/mnt/slow\"}))",
+                        "legendFormat": "slow"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=\"/\"} / node_filesystem_size_bytes{instance=\"truenas\", mountpoint=\"/\"}))",
+                        "legendFormat": "boot-pool"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 90,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "ARC Size",
+          "description": "Current ARC footprint out of 128GB system RAM.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_zfs_arc_size{instance=\"truenas\"}",
+                        "legendFormat": "ARC"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "blue"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "ARC Hit Rate",
+          "description": "Overall hits / (hits+misses), 10m window.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * rate(node_zfs_arc_hits{instance=\"truenas\"}[10m]) / (rate(node_zfs_arc_hits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_misses{instance=\"truenas\"}[10m]))",
+                        "legendFormat": "Hit %"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "unit": "percent",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 90,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 97,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data",
+                  "decimals": 1
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Demand Miss Rate",
+          "description": "The RAM-upgrade metric: was 5.8% pre-upgrade, 0.6% after. Red at 5% means eviction churn is back.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (rate(node_zfs_arc_demand_data_misses{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_misses{instance=\"truenas\"}[10m])) / (rate(node_zfs_arc_demand_data_hits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_data_iohits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_data_misses{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_hits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_iohits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_misses{instance=\"truenas\"}[10m]))",
+                        "legendFormat": "Demand Miss %"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "unit": "percent",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 2,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 5,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data",
+                  "decimals": 2
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "ARC Size vs Target",
+          "description": "ARC size hugging a stable target well below c_max = healthy. Target compressing downward = memory pressure returning.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_zfs_arc_size{instance=\"truenas\"}",
+                        "legendFormat": "ARC size"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_zfs_arc_c{instance=\"truenas\"}",
+                        "legendFormat": "target (c)"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_zfs_arc_c_max{instance=\"truenas\"}",
+                        "legendFormat": "ceiling (c_max)"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "ceiling.*"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "ARC Hit / Demand Miss Rates",
+          "description": "Hit rate should live in the high 90s; demand miss rate near zero.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * rate(node_zfs_arc_hits{instance=\"truenas\"}[10m]) / (rate(node_zfs_arc_hits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_misses{instance=\"truenas\"}[10m]))",
+                        "legendFormat": "Hit %"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (rate(node_zfs_arc_demand_data_misses{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_misses{instance=\"truenas\"}[10m])) / (rate(node_zfs_arc_demand_data_hits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_data_iohits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_data_misses{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_hits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_iohits{instance=\"truenas\"}[10m]) + rate(node_zfs_arc_demand_metadata_misses{instance=\"truenas\"}[10m]))",
+                        "legendFormat": "Demand Miss %"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "min": 0,
+                  "max": 100
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "Pool Usage Trend",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=\"/mnt/fast\"} / node_filesystem_size_bytes{instance=\"truenas\", mountpoint=\"/mnt/fast\"}))",
+                        "legendFormat": "fast"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=\"/mnt/slow\"} / node_filesystem_size_bytes{instance=\"truenas\", mountpoint=\"/mnt/slow\"}))",
+                        "legendFormat": "slow"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=\"/\"} / node_filesystem_size_bytes{instance=\"truenas\", mountpoint=\"/\"}))",
+                        "legendFormat": "boot-pool"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "min": 0,
+                  "max": 100
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "Dataset Used Space (top-level)",
+          "description": "Used bytes per top-level dataset on both pools. Watch for the runaway line.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_filesystem_size_bytes{instance=\"truenas\", mountpoint=~\"/mnt/(fast|slow)/[^/]+\"} - node_filesystem_avail_bytes{instance=\"truenas\", mountpoint=~\"/mnt/(fast|slow)/[^/]+\"}",
+                        "legendFormat": "{{mountpoint}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "CPU Package Temp",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_hwmon_temp_celsius{instance=\"truenas\", chip=\"platform_coretemp_0\", sensor=\"temp1\"}",
+                        "legendFormat": "D-1541"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 85,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "NVMe Temps (composite)",
+          "description": "temp1 = composite. Controller/hotspot sensors (temp2/3) run hotter and are not shown.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_hwmon_temp_celsius{instance=\"truenas\", chip=~\"nvme_nvme.\", sensor=\"temp1\"}",
+                        "legendFormat": "{{chip}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 60,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 70,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
+          "title": "Drive Bay Temps",
+          "description": "SAS/SATA bay drives. Investigate anything trending above ~45\u00b0C.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_hwmon_temp_celsius{instance=\"truenas\", chip=~\"target.*\", sensor=\"temp1\"}",
+                        "legendFormat": "{{chip}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "celsius",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 0,
+              "width": 8,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 8,
+              "y": 0,
+              "width": 5,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-2"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 13,
+              "y": 0,
+              "width": 5,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-3"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 18,
+              "y": 0,
+              "width": 6,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-4"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 5,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 5,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 14,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 14,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-8"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 23,
+              "width": 6,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-9"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 6,
+              "y": 23,
+              "width": 8,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-10"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 14,
+              "y": 23,
+              "width": 10,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-11"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "homelab",
+      "truenas",
+      "zfs",
+      "storage"
+    ],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-24h",
+      "to": "now",
+      "autoRefresh": "1m",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "TrueNAS \u2014 ZFS & Storage",
+    "variables": []
+  }
+}

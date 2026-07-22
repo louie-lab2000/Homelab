@@ -1,0 +1,1632 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "container-resources-cadvisor",
+    "annotations": {
+      "grafana.app/folder": "ffhspqhvdw64gb"
+    }
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "Containers Down",
+          "description": "Textfile alerting source (docker-metrics.timer), not cAdvisor. Total minus running across all three hosts.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "sum(docker_containers_total) - sum(docker_container_running)",
+                        "legendFormat": "Down"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "0 \u2014 ALL RUNNING",
+                          "color": "green",
+                          "index": 0
+                        }
+                      }
+                    }
+                  ],
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "Running Containers by Host",
+          "description": "Textfile data.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "sum by (instance) (docker_container_running)",
+                        "legendFormat": "{{instance}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "blue"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "Host Memory Used %",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 * (1 - (node_memory_MemAvailable_bytes{instance=~\"backup|docker|docker-gpu\"} / node_memory_MemTotal_bytes{instance=~\"backup|docker|docker-gpu\"}))",
+                        "legendFormat": "{{instance}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 85,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Host CPU Used %",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{instance=~\"backup|docker|docker-gpu\", mode=\"idle\"}[5m])) * 100)",
+                        "legendFormat": "{{instance}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 85,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "Host Memory \u2014 Used vs Total",
+          "description": "Dashed line = physical/assigned total. Gap between used and total = headroom.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"backup|docker|docker-gpu\"} - node_memory_MemAvailable_bytes{instance=~\"backup|docker|docker-gpu\"}",
+                        "legendFormat": "{{instance}} used"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "node_memory_MemTotal_bytes{instance=~\"backup|docker|docker-gpu\"}",
+                        "legendFormat": "{{instance}} total"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": ".* total"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Host CPU Used % (trend)",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{instance=~\"backup|docker|docker-gpu\", mode=\"idle\"}[5m])) * 100)",
+                        "legendFormat": "{{instance}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "docker \u2014 Container CPU (cores)",
+          "description": "Absolute cores consumed per container (cAdvisor). Compare the sum against the VM's assigned vCPUs.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{instance=\"docker\", name!=\"\"}[5m]))",
+                        "legendFormat": "{{name}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "docker \u2014 Container Memory (working set)",
+          "description": "Working set per container (cAdvisor). Compare the sum against the VM's assigned RAM.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "container_memory_working_set_bytes{instance=\"docker\", name!=\"\"}",
+                        "legendFormat": "{{name}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "docker-gpu \u2014 Container CPU (cores)",
+          "description": "Absolute cores consumed per container (cAdvisor). Compare the sum against the VM's assigned vCPUs.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{instance=\"docker-gpu\", name!=\"\"}[5m]))",
+                        "legendFormat": "{{name}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "docker-gpu \u2014 Container Memory (working set)",
+          "description": "Working set per container (cAdvisor). Compare the sum against the VM's assigned RAM.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "container_memory_working_set_bytes{instance=\"docker-gpu\", name!=\"\"}",
+                        "legendFormat": "{{name}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
+          "title": "backup \u2014 Container CPU (cores)",
+          "description": "Absolute cores consumed per container (cAdvisor). Compare the sum against the VM's assigned vCPUs.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{instance=\"backup\", name!=\"\"}[5m]))",
+                        "legendFormat": "{{name}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-12": {
+        "kind": "Panel",
+        "spec": {
+          "id": 12,
+          "title": "backup \u2014 Container Memory (working set)",
+          "description": "Working set per container (cAdvisor). Compare the sum against the VM's assigned RAM.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "container_memory_working_set_bytes{instance=\"backup\", name!=\"\"}",
+                        "legendFormat": "{{name}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 0,
+              "width": 4,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 4,
+              "y": 0,
+              "width": 6,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-2"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 10,
+              "y": 0,
+              "width": 7,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-3"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 17,
+              "y": 0,
+              "width": 7,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-4"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 5,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 5,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 14,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 14,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-8"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 23,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-9"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 23,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-10"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 32,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-11"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 32,
+              "width": 12,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-12"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "homelab",
+      "containers",
+      "cadvisor",
+      "capacity"
+    ],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-24h",
+      "to": "now",
+      "autoRefresh": "1m",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "Container Resources \u2014 cAdvisor",
+    "variables": []
+  }
+}

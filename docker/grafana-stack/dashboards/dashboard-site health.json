@@ -1,0 +1,2274 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "leeann-website-health-v9",
+    "namespace": "default",
+    "uid": "ce5b258e-c9cb-40b0-a848-f8579c3f370b",
+    "resourceVersion": "1779909910278014",
+    "generation": 3,
+    "creationTimestamp": "2026-05-27T19:23:44Z",
+    "labels": {
+      "grafana.app/deprecatedInternalID": "1572179259355136"
+    },
+    "annotations": {
+      "grafana.app/createdBy": "user:efhbwf2e3v6yoe",
+      "grafana.app/folder": "",
+      "grafana.app/saved-from-ui": "Grafana v13.0.1 (a100054f)",
+      "grafana.app/updatedBy": "user:efhbwf2e3v6yoe",
+      "grafana.app/updatedTimestamp": "2026-05-27T19:25:10Z"
+    }
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true
+        }
+      }
+    ],
+    "cursorSync": "Crosshair",
+    "description": "Live health and performance monitoring for leeannperugini.com",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "Site Status",
+          "description": "Is the website reachable right now?",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_success{instance=\"https://www.leeannperugini.com/privacy-policy/\"}",
+                        "legendFormat": "Status"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "OFFLINE",
+                          "color": "red",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "ONLINE",
+                          "color": "green",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 1,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "VM Disk Usage",
+          "description": "How full the WordPress server's disk is. Over 80% = time to clean up or expand — new recipe photos add up fast!",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "(1 - (node_filesystem_avail_bytes{instance=~\"foodblog\", mountpoint=\"/\", fstype!=\"tmpfs\"} / node_filesystem_size_bytes{instance=~\"foodblog\", mountpoint=\"/\", fstype!=\"tmpfs\"})) * 100",
+                        "legendFormat": "Disk Used %"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": true,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Disk Used",
+                  "unit": "percent",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 85,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-11": {
+        "kind": "Panel",
+        "spec": {
+          "id": 11,
+          "title": "DNS Lookup Time",
+          "description": "Time to resolve the domain name. Should always be under 100ms via Cloudflare.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_dns_lookup_time_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\"} * 1000",
+                        "legendFormat": "DNS"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "DNS Lookup",
+                  "unit": "ms",
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 100,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 500,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-12": {
+        "kind": "Panel",
+        "spec": {
+          "id": 12,
+          "title": "TLS Handshake Time",
+          "description": "Time for the SSL security connection to establish.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_http_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\", phase=\"tls\"} * 1000",
+                        "legendFormat": "TLS"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "TLS Time",
+                  "unit": "ms",
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 200,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 500,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-13": {
+        "kind": "Panel",
+        "spec": {
+          "id": 13,
+          "title": "Last Backup Age",
+          "description": "Hours since the last successful UpdraftPlus backup. Green = recent, Yellow = getting old, Red = overdue.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "wp_backup_age_hours{instance=\"foodblog\"}",
+                        "legendFormat": "Backup Age"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Hours Since Backup",
+                  "unit": "none",
+                  "decimals": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 192,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 240,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-14": {
+        "kind": "Panel",
+        "spec": {
+          "id": 14,
+          "title": "Plugin Updates",
+          "description": "Number of WordPress plugins with available updates. Green = all up to date, Red = updates needed.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "wp_plugin_updates_pending{instance=\"foodblog\"}",
+                        "legendFormat": "Plugin Updates"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Plugins Needing Update",
+                  "unit": "short",
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 5,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-15": {
+        "kind": "Panel",
+        "spec": {
+          "id": 15,
+          "title": "Response Time Breakdown (24h)",
+          "description": "Where load time is spent: DNS → Connection → TLS → Server Processing → Transfer. Spikes in Server Processing point to WordPress/PHP issues. Spikes in Transfer point to large images.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\"} * 1000",
+                        "legendFormat": "Total"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_http_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\", phase=\"connect\"} * 1000",
+                        "legendFormat": "Connect"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_http_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\", phase=\"tls\"} * 1000",
+                        "legendFormat": "TLS Handshake"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_http_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\", phase=\"processing\"} * 1000",
+                        "legendFormat": "Server Processing"
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_http_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\", phase=\"transfer\"} * 1000",
+                        "legendFormat": "Transfer"
+                      }
+                    },
+                    "refId": "E",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "ms",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Total"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 3
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "white",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-16": {
+        "kind": "Panel",
+        "spec": {
+          "id": 16,
+          "title": "Uptime History",
+          "description": "Green = site was up, Red = site was down. Any red is worth investigating.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_success{instance=\"https://www.leeannperugini.com/privacy-policy/\"}",
+                        "legendFormat": "Site Status"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "state-timeline",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "alignValue": "center",
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "mergeValues": true,
+                "rowHeight": 0.9,
+                "showValue": "never",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "DOWN",
+                          "color": "red",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "UP",
+                          "color": "green",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 1,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "axisPlacement": "auto",
+                    "fillOpacity": 100,
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineWidth": 0,
+                    "spanNulls": false
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-17": {
+        "kind": "Panel",
+        "spec": {
+          "id": 17,
+          "title": "Response Time",
+          "description": "Current page load speed. Green = fast, Yellow = slow, Red = problem.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\"} * 1000",
+                        "legendFormat": "Response Time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": true,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Load Time",
+                  "unit": "ms",
+                  "decimals": 0,
+                  "min": 0,
+                  "max": 5000,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1000,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 3000,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-18": {
+        "kind": "Panel",
+        "spec": {
+          "id": 18,
+          "title": "Backup Status",
+          "description": "Whether the last UpdraftPlus backup completed successfully.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "wp_backup_success{instance=\"foodblog\"}",
+                        "legendFormat": "Last Backup"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "FAILED",
+                          "color": "red",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "OK",
+                          "color": "green",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 1,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-19": {
+        "kind": "Panel",
+        "spec": {
+          "id": 19,
+          "title": "WordPress Core Update",
+          "description": "Whether a WordPress core update is available. Green = up to date, Red = update available.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "wp_core_update_available{instance=\"foodblog\"}",
+                        "legendFormat": "Core Update"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "UP TO DATE",
+                          "color": "green",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "UPDATE AVAILABLE",
+                          "color": "red",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "HTTP Status Code",
+          "description": "200 = all good. Anything else may indicate a problem.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_http_status_code{instance=\"https://www.leeannperugini.com/privacy-policy/\"}",
+                        "legendFormat": "HTTP Code"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "200": {
+                          "text": "200  OK",
+                          "color": "green",
+                          "index": 0
+                        },
+                        "301": {
+                          "text": "301  Redirect",
+                          "color": "yellow",
+                          "index": 1
+                        },
+                        "302": {
+                          "text": "302  Redirect",
+                          "color": "yellow",
+                          "index": 2
+                        },
+                        "404": {
+                          "text": "404  Not Found",
+                          "color": "red",
+                          "index": 3
+                        },
+                        "500": {
+                          "text": "500  Server Error",
+                          "color": "red",
+                          "index": 4
+                        },
+                        "503": {
+                          "text": "503  Unavailable",
+                          "color": "red",
+                          "index": 5
+                        }
+                      }
+                    }
+                  ],
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 200,
+                        "color": "green"
+                      },
+                      {
+                        "value": 201,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 400,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "Response Time",
+          "description": "How fast the site loads. Under 1s = great, over 3s = problem.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "probe_duration_seconds{instance=\"https://www.leeannperugini.com/privacy-policy/\"} * 1000",
+                        "legendFormat": "Load Time"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Load Time",
+                  "unit": "ms",
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1000,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 3000,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "SSL Certificate",
+          "description": "Days until the HTTPS certificate expires. Green = fine, Yellow = renew soon, Red = urgent.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "round((probe_ssl_earliest_cert_expiry{instance=\"https://www.leeannperugini.com/privacy-policy/\"} - time()) / 86400)",
+                        "legendFormat": "SSL Days Left"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Days Until Expiry",
+                  "unit": "none",
+                  "decimals": 0,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 14,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 30,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "Uptime — 24 Hours",
+          "description": "Percentage of health checks that passed in the last 24 hours. Should be 100%.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "avg_over_time(probe_success{instance=\"https://www.leeannperugini.com/privacy-policy/\"}[24h]) * 100",
+                        "legendFormat": "24h"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "24h Uptime",
+                  "unit": "percent",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 95,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 99,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Uptime — 30 Days",
+          "description": "Percentage of health checks passed over the last 30 days.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "avg_over_time(probe_success{instance=\"https://www.leeannperugini.com/privacy-policy/\"}[30d]) * 100",
+                        "legendFormat": "30d"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value_and_name",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "30d Uptime",
+                  "unit": "percent",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 95,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 99,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "VM CPU Usage",
+          "description": "How hard the WordPress server's CPU is working. Sustained high CPU can cause slow page loads — may indicate a runaway plugin or bot traffic.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "100 - (avg by(instance) (rate(node_cpu_seconds_total{instance=~\"foodblog\", mode=\"idle\"}[5m])) * 100)",
+                        "legendFormat": "CPU Used %",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": true,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "CPU Used",
+                  "unit": "percent",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 70,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 90,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "VM Memory Usage",
+          "description": "How much of the WordPress server's RAM is in use. Over 85% = investigate for memory leaks or resize the VM.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"foodblog\"} / node_memory_MemTotal_bytes{instance=~\"foodblog\"})) * 100",
+                        "legendFormat": "Memory Used %"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": true,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "displayName": "Memory Used",
+                  "unit": "percent",
+                  "decimals": 1,
+                  "min": 0,
+                  "max": 100,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 75,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 90,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 0,
+              "width": 4,
+              "height": 4,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 4,
+              "y": 0,
+              "width": 4,
+              "height": 4,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-2"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 8,
+              "y": 0,
+              "width": 4,
+              "height": 4,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-3"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 0,
+              "width": 4,
+              "height": 4,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-4"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 16,
+              "y": 0,
+              "width": 4,
+              "height": 4,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 20,
+              "y": 0,
+              "width": 4,
+              "height": 4,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 4,
+              "width": 6,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 6,
+              "y": 4,
+              "width": 6,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-9"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 4,
+              "width": 6,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-10"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 18,
+              "y": 4,
+              "width": 6,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-17"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 10,
+              "width": 4,
+              "height": 3,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-11"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 4,
+              "y": 10,
+              "width": 4,
+              "height": 3,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-12"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 8,
+              "y": 10,
+              "width": 4,
+              "height": 3,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-13"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 10,
+              "width": 4,
+              "height": 3,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-18"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 16,
+              "y": 10,
+              "width": 4,
+              "height": 3,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-14"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 20,
+              "y": 10,
+              "width": 4,
+              "height": 3,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-19"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 13,
+              "width": 16,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-15"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 16,
+              "y": 13,
+              "width": 8,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-16"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [
+      {
+        "title": "Visit leeannperugini.com",
+        "type": "link",
+        "icon": "external link",
+        "tooltip": "Open the food blog",
+        "url": "https://www.leeannperugini.com",
+        "tags": [],
+        "asDropdown": false,
+        "targetBlank": true,
+        "includeVars": false,
+        "keepTime": false
+      }
+    ],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "website",
+      "blackbox",
+      "leeann",
+      "production"
+    ],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-24h",
+      "to": "now",
+      "autoRefresh": "1m",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "leeannperugini.com — Site Health",
+    "variables": []
+  }
+}

@@ -1,0 +1,650 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "log-overview",
+    "namespace": "default",
+    "uid": "afefab55-f3a6-4503-8bcd-78aa662751c1",
+    "resourceVersion": "1775065255085992",
+    "generation": 2,
+    "creationTimestamp": "2026-04-01T02:10:22Z",
+    "labels": {
+      "grafana.app/deprecatedInternalID": "3536399172341760"
+    },
+    "annotations": {
+      "grafana.app/createdBy": "user:efhbwf2e3v6yoe",
+      "grafana.app/folder": "ffhspqhvdw64gb",
+      "grafana.app/message": "moved to Homelab folder",
+      "grafana.app/updatedBy": "user:efhbwf2e3v6yoe",
+      "grafana.app/updatedTimestamp": "2026-04-01T17:40:55Z",
+      "grafana.app/folderTitle": "Homelab",
+      "grafana.app/folderUrl": "/dashboards/f/ffhspqhvdw64gb/homelab"
+    }
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true,
+          "legacyOptions": {
+            "type": "dashboard"
+          }
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "Errors Across All Hosts",
+          "description": "Warning-and-above from systemd journal across all Alloy-managed hosts. TTM buffer noise suppressed.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"systemd-journal\", priority=~\"emerg|alert|crit|err|warning\"} != \"TTM\""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "Apache Errors",
+          "description": "Apache error log stream from web hosts (forum, blog2, leeannperugini, test). Notices suppressed. Empty = healthy.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"apache\", logtype=\"error\"} != \"notice\" != \"AH00558\" != \"AH01909\""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "Apache 4xx/5xx Responses",
+          "description": "Client errors (4xx) and server errors (5xx) from Apache access logs across all web hosts.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"apache\", logtype=\"access\"} |~ \"\\\" (4|5)[0-9]{2} \""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Proxmox & PBS Events",
+          "description": "Warning-and-above from pve-01, pve-10 (Proxmox hosts) and pbs (Proxmox Backup Server on TrueNAS Incus). Covers pve-*, proxmox-backup-*, and pbs-related systemd units.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{host=~\"pve-01|pve-10\", priority=~\"warning|err|crit|alert|emerg\"}",
+                        "legendFormat": "PVE"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{host=\"pbs\", priority=~\"warning|err|crit|alert|emerg\"}",
+                        "legendFormat": "PBS"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "Service Failures",
+          "description": "Systemd service failures, crashes, and abnormal exits across all Alloy-managed hosts. Empty = healthy.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"systemd-journal\", priority=~\"emerg|alert|crit|err\"} |~ \"(?i)(failed to start|failed with result|crashed|dumped core|terminated by signal|killed|segfault)\""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Storage / NFS / ZFS Issues",
+          "description": "NFS timeouts and hung tasks from all Alloy hosts (pve-01, pve-10, docker-int, k3s nodes). ZFS errors from backup.louielab.cc (GMKtec NUC \u2014 ZFS send/receive target). NOTE: truenas.louielab.cc uses pull-only node_exporter and does NOT push logs to Loki \u2014 check TrueNAS UI directly for storage events.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"systemd-journal\"} |~ \"(?i)(nfs.*not responding|blocked for more than|rpc_check_timeout|server.*not responding|nfs.*timed out|mount.*failed|nfs.*error)\"",
+                        "legendFormat": "NFS"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"systemd-journal\"} |~ \"(?i)(checksum.error|read.error|write.error|degraded|faulted|unavail|resilver.started|scrub.repaired.*error|cannot.import|pool.*error|i/o.error|zpool.*DEGRADED|zpool.*FAULTED|zpool.*UNAVAIL)\" != \"zfs-auto-snap\" != \"zfs-auto-snapshot\" != \"CMD\" != \"CRON\" != \"unavailable ranges\"",
+                        "legendFormat": "ZFS/backup"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "{job=\"systemd-journal\"} |~ \"(?i)(TTM.*buffer|drm.*error|GPU.*reset|gpu.*hung)\"",
+                        "legendFormat": "GPU/TTM"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "logs",
+            "version": "",
+            "spec": {
+              "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "Log Volume by Host",
+          "description": "Log ingestion rate per host over time. Spikes may indicate runaway logging or an active incident.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "loki",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "afhby9s13z5z4c"
+                      },
+                      "spec": {
+                        "expr": "sum by (host) (count_over_time({job=\"systemd-journal\"}[5m]))",
+                        "legendFormat": "{{host}}"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "",
+            "spec": {
+              "options": {
+                "legend": {
+                  "displayMode": "list",
+                  "placement": "bottom"
+                },
+                "tooltip": {
+                  "mode": "multi"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "custom": {
+                    "drawStyle": "line",
+                    "fillOpacity": 20,
+                    "lineWidth": 1,
+                    "stacking": {
+                      "mode": "none"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 8,
+              "width": 12,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-2"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 8,
+              "width": 12,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-3"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 16,
+              "width": 12,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-4"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 16,
+              "width": 12,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 24,
+              "width": 24,
+              "height": 10,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 34,
+              "width": 24,
+              "height": 6,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "logs",
+      "loki",
+      "homelab"
+    ],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-6h",
+      "to": "now",
+      "autoRefresh": "30s",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "Log Overview",
+    "variables": []
+  }
+}

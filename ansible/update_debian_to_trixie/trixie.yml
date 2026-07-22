@@ -1,7 +1,0 @@
----
-- name: Upgrade to Debian trixie
-  hosts: all
-  serial: 1
-  gather_facts: false
-  roles:
-    - base/upgrade_trixie

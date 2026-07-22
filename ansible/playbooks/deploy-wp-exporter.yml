@@ -1,0 +1,126 @@
+---
+# deploy-wp-exporter.yml
+# Deploys the WordPress Prometheus exporter to www.leeannperugini.com
+#
+# Usage:
+#   ansible-playbook deploy-wp-exporter.yml
+#
+# Prerequisites on target host:
+#   - www-data user exists (standard Debian/Ubuntu with nginx/apache)
+#   - Python 3 available at /usr/bin/python3
+#
+# After deployment, add this scrape job to prometheus.yml on backup
+# and hot-reload Prometheus:
+#
+#   - job_name: "wp_exporter"
+#     static_configs:
+#       - targets: ["<foodblog-ip>:9105"]
+#         labels:
+#           instance: "foodblog"
+#           group: "web"
+#           description: "WordPress site health exporter"
+#
+#   curl -X POST http://backup.louielab.cc:9090/-/reload
+
+- name: Deploy WordPress Prometheus exporter
+  hosts: wordpress
+  become: true
+
+  vars:
+    wp_exporter_dir: /opt/wp_exporter
+    wp_exporter_port: 9105
+    wp_path: /var/www/wordpress
+    wp_user: www-data
+
+  tasks:
+
+    - name: Ensure WP-CLI is installed
+      stat:
+        path: /usr/local/bin/wp
+      register: wpcli_stat
+
+    - name: Download WP-CLI if not present
+      get_url:
+        url: https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+        dest: /usr/local/bin/wp
+        mode: "0755"
+      when: not wpcli_stat.stat.exists
+
+    - name: Verify WP-CLI works
+      command: wp --info --allow-root
+      register: wpcli_info
+      changed_when: false
+      failed_when: wpcli_info.rc != 0
+
+    - name: Create exporter directory
+      file:
+        path: "{{ wp_exporter_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copy exporter script
+      copy:
+        src: ../files/wp_exporter.py
+        dest: "{{ wp_exporter_dir }}/wp_exporter.py"
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Restart wp_exporter
+
+    - name: Allow root to run wp as www-data without password (sudoers)
+      copy:
+        dest: /etc/sudoers.d/wp_exporter
+        content: |
+          # Allow root to run WP-CLI as www-data for the Prometheus exporter
+          root ALL=(www-data) NOPASSWD: /usr/local/bin/wp
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Install systemd unit
+      copy:
+        src: ../files/wp_exporter.service
+        dest: /etc/systemd/system/wp_exporter.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart wp_exporter
+
+    - name: Enable and start wp_exporter
+      systemd:
+        name: wp_exporter
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Wait for exporter to come up
+      wait_for:
+        port: "{{ wp_exporter_port }}"
+        host: 127.0.0.1
+        timeout: 30
+
+    - name: Verify exporter responds
+      uri:
+        url: "http://127.0.0.1:{{ wp_exporter_port }}/metrics"
+        return_content: true
+      register: metrics_response
+      failed_when: "'wp_exporter_scrape_success' not in metrics_response.content"
+
+    - name: Show exporter status
+      debug:
+        msg: "wp_exporter is UP on port {{ wp_exporter_port }} — metrics endpoint responding"
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+    - name: Restart wp_exporter
+      systemd:
+        name: wp_exporter
+        state: restarted

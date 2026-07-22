@@ -1,0 +1,101 @@
+---
+# STEP 1 of 2 — Uninstall old monitoring agents
+# Removes: promtail, prometheus-node-exporter, Grafana apt repo, GPG key,
+#           all config and state files for both agents
+#
+# Run with: ansible-playbook uninstall-monitoring.yml
+# Then run: ansible-playbook deploy-monitoring.yml
+
+- name: Uninstall old monitoring agents (promtail + node_exporter)
+  hosts: all
+  become: true
+
+  tasks:
+    # --- Stop and disable services ---
+    - name: Stop promtail service (if running)
+      ansible.builtin.systemd:
+        name: promtail
+        state: stopped
+      ignore_errors: true
+
+    - name: Disable promtail service
+      ansible.builtin.systemd:
+        name: promtail
+        enabled: false
+      ignore_errors: true
+
+    - name: Stop node_exporter service (if running)
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        state: stopped
+      ignore_errors: true
+
+    - name: Disable node_exporter service
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        enabled: false
+      ignore_errors: true
+
+    # --- Remove packages ---
+    - name: Remove promtail package
+      ansible.builtin.apt:
+        name: promtail
+        state: absent
+        purge: true
+      ignore_errors: true
+
+    - name: Remove node_exporter package
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: absent
+        purge: true
+      ignore_errors: true
+
+    # --- Remove config and state files ---
+    - name: Remove promtail config directory
+      ansible.builtin.file:
+        path: /etc/promtail
+        state: absent
+
+    - name: Remove promtail positions/state directory
+      ansible.builtin.file:
+        path: /var/lib/promtail
+        state: absent
+
+    # --- Remove Grafana apt repo (will be re-added cleanly by install playbook) ---
+    - name: Remove Grafana apt repo file
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/grafana.list
+        state: absent
+
+    - name: Remove Grafana GPG key
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/grafana.gpg
+        state: absent
+
+    - name: Update apt cache after repo removal
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Autoremove orphaned packages
+      ansible.builtin.apt:
+        autoremove: true
+
+    # --- Verify both are gone ---
+    - name: Check promtail status
+      ansible.builtin.command: systemctl status promtail
+      register: promtail_status
+      failed_when: false
+      changed_when: false
+
+    - name: Check node_exporter status
+      ansible.builtin.command: systemctl status prometheus-node-exporter
+      register: node_exporter_status
+      failed_when: false
+      changed_when: false
+
+    - name: Report cleanup status
+      ansible.builtin.debug:
+        msg:
+          - "promtail:       {{ 'REMOVED (good)' if promtail_status.rc != 0 else 'WARNING: still present on ' + inventory_hostname }}"
+          - "node_exporter:  {{ 'REMOVED (good)' if node_exporter_status.rc != 0 else 'WARNING: still present on ' + inventory_hostname }}"

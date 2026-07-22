@@ -1,0 +1,82 @@
+# =============================================================================
+# deploy-docker-metrics.yml
+# Deploys the docker container-state textfile collector to docker and
+# docker-gpu, enables Alloy's textfile collector, and cleans up the
+# failed cAdvisor / docker_exporter deployments.
+#
+# Run from /home/louie/deploy-monitoring/ on backup.louielab.cc with the
+# files from textfile-docker/ placed alongside this playbook:
+#   ansible-playbook -i inventory deploy-docker-metrics.yml
+# =============================================================================
+
+- name: Deploy docker container-state textfile collector
+  hosts: docker.louielab.cc,docker-gpu.louielab.cc
+  become: true
+
+  tasks:
+    - name: Create textfile collector directory
+      ansible.builtin.file:
+        path: /var/lib/node_exporter/textfile
+        state: directory
+        mode: "0755"
+
+    - name: Install metrics script
+      ansible.builtin.copy:
+        src: ../files/docker-metrics.sh
+        dest: /usr/local/bin/docker-metrics.sh
+        mode: "0755"
+
+    - name: Install systemd service unit
+      ansible.builtin.copy:
+        src: ../files/docker-metrics.service
+        dest: /etc/systemd/system/docker-metrics.service
+        mode: "0644"
+
+    - name: Install systemd timer unit
+      ansible.builtin.copy:
+        src: ../files/docker-metrics.timer
+        dest: /etc/systemd/system/docker-metrics.timer
+        mode: "0644"
+
+    - name: Enable and start the timer
+      ansible.builtin.systemd_service:
+        name: docker-metrics.timer
+        state: started
+        enabled: true
+        daemon_reload: true
+
+    - name: Enable Alloy textfile collector (replace bare unix exporter block)
+      ansible.builtin.replace:
+        path: /etc/alloy/config.alloy
+        regexp: 'prometheus\.exporter\.unix "node" \{\}'
+        replace: 'prometheus.exporter.unix "node" {\n  textfile {\n    directory = "/var/lib/node_exporter/textfile"\n  }\n}'
+      register: alloy_edit
+
+    - name: Restart Alloy if config changed
+      ansible.builtin.systemd_service:
+        name: alloy
+        state: restarted
+      when: alloy_edit.changed
+
+    - name: Remove failed cAdvisor and docker-exporter containers
+      ansible.builtin.command:
+        cmd: "docker rm -f {{ item }}"
+      loop:
+        - cadvisor
+        - docker-exporter
+      register: rm_result
+      changed_when: rm_result.rc == 0
+      failed_when: false
+
+    - name: Verify metrics file is being written
+      ansible.builtin.command:
+        cmd: head -3 /var/lib/node_exporter/textfile/docker_containers.prom
+      register: prom_head
+      changed_when: false
+      retries: 3
+      delay: 15
+      until: prom_head.rc == 0
+
+    - name: Show sample output
+      ansible.builtin.debug:
+        msg: "{{ prom_head.stdout_lines }}"

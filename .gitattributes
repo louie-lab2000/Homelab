@@ -1,0 +1,6 @@
+# Everything is destined for Linux hosts - force LF in repo and working tree
+* text=lf
+
+*.png binary
+*.jpg binary
+*.gz binary

@@ -1,0 +1,5 @@
+# Alertmanager SMTP settings
+SMTP_FROM=lperuguini@yahoo.com
+SMTP_USERNAME=lperuguini@yahoo.com
+SMTP_PASSWORD=wkhqwjhwblowbcps
+ALERT_EMAIL=lperuguini@yahoo.com

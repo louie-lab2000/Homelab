@@ -1,0 +1,161 @@
+---
+# update_monitoring_host.yml
+#
+# Migrates all Alloy agent configs from the old docker-int IP to the new one.
+# Uses the FQDN (docker-int.louielab.cc) so future moves only need a DNS update.
+#
+# Usage:
+#   ansible-playbook update_monitoring_host.yml
+#   ansible-playbook update_monitoring_host.yml --check        # dry-run
+#   ansible-playbook update_monitoring_host.yml --limit pve-01 # single host
+#
+# Prerequisites:
+#   - pfSense host override updated: docker-int.louielab.cc → 192.168.10.43
+#   - Firewall rule allowing server VLAN(s) → 192.168.10.43 on ports 3100 (Loki)
+#     and 9090 (Prometheus remote_write) in VLAN 100
+
+- name: Update monitoring stack references on all Alloy hosts
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    old_ip: "192.168.51.20"
+    new_fqdn: "backup.louielab.cc"
+    alloy_config_path: "/etc/alloy/config.alloy"
+    alloy_service_name: "alloy"
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # DETECT — find hosts that still reference the old IP
+    # -------------------------------------------------------------------------
+    - name: Check if Alloy config exists
+      ansible.builtin.stat:
+        path: "{{ alloy_config_path }}"
+      register: alloy_cfg_stat
+
+    - name: Search for old IP in Alloy config
+      ansible.builtin.command:
+        cmd: grep -c "{{ old_ip }}" "{{ alloy_config_path }}"
+      register: old_ip_count
+      changed_when: false
+      failed_when: old_ip_count.rc > 1   # rc=0 found, rc=1 not found, rc>1 = error
+      when: alloy_cfg_stat.stat.exists
+
+    # -------------------------------------------------------------------------
+    # BACKUP — before touching anything
+    # -------------------------------------------------------------------------
+    - name: Backup current Alloy config
+      ansible.builtin.copy:
+        src: "{{ alloy_config_path }}"
+        dest: "{{ alloy_config_path }}.bak_{{ ansible_date_time.date | default('pre-migrate') }}"
+        remote_src: true
+        mode: preserve
+      when:
+        - alloy_cfg_stat.stat.exists
+        - old_ip_count.rc == 0   # only if old IP was found
+
+    # -------------------------------------------------------------------------
+    # UPDATE — replace old IP with FQDN
+    # -------------------------------------------------------------------------
+    - name: Replace old monitoring IP with FQDN in Alloy config
+      ansible.builtin.replace:
+        path: "{{ alloy_config_path }}"
+        regexp: "{{ old_ip | regex_escape() }}"
+        replace: "{{ new_fqdn }}"
+      register: alloy_replace_result
+      when:
+        - alloy_cfg_stat.stat.exists
+        - old_ip_count.rc == 0
+
+    # -------------------------------------------------------------------------
+    # VALIDATE — make sure the new FQDN resolves before restarting
+    # -------------------------------------------------------------------------
+    - name: Verify FQDN resolves from this host
+      ansible.builtin.command:
+        cmd: getent hosts "{{ new_fqdn }}"
+      register: dns_check
+      changed_when: false
+      failed_when: dns_check.rc != 0
+      when: alloy_replace_result is changed
+
+    # -------------------------------------------------------------------------
+    # RESTART — only on hosts where we made a change
+    # -------------------------------------------------------------------------
+    - name: Restart Alloy service
+      ansible.builtin.systemd:
+        name: "{{ alloy_service_name }}"
+        state: restarted
+      when: alloy_replace_result is changed
+
+    # -------------------------------------------------------------------------
+    # VERIFY — confirm Alloy came back healthy
+    # -------------------------------------------------------------------------
+    - name: Wait for Alloy to become healthy (HTTP check)
+      ansible.builtin.uri:
+        url: "http://localhost:12345/-/ready"
+        status_code: 200
+      register: alloy_ready
+      retries: 6
+      delay: 5
+      until: alloy_ready.status == 200
+      when: alloy_replace_result is changed
+
+    # -------------------------------------------------------------------------
+    # REPORT
+    # -------------------------------------------------------------------------
+    - name: Report no Alloy config found (host may use push from monitoring side)
+      ansible.builtin.debug:
+        msg: "No Alloy config at {{ alloy_config_path }} — skipping (may be push-only or not an Alloy host)"
+      when: not alloy_cfg_stat.stat.exists
+
+    - name: Report host already up to date
+      ansible.builtin.debug:
+        msg: "No old IP found in Alloy config — already up to date or using FQDN"
+      when:
+        - alloy_cfg_stat.stat.exists
+        - old_ip_count.rc == 1
+
+    - name: Report successful migration
+      ansible.builtin.debug:
+        msg: "Alloy config updated: {{ old_ip }} → {{ new_fqdn }} and service restarted"
+      when: alloy_replace_result is changed
+
+
+# -------------------------------------------------------------------------
+# SANITY CHECK — run from the Ansible control node after the fleet is done
+# -------------------------------------------------------------------------
+- name: Post-migration connectivity check from Ansible controller
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    new_fqdn: "backup.louielab.cc"
+
+  tasks:
+
+    - name: Verify Loki is reachable on new host
+      ansible.builtin.uri:
+        url: "http://{{ new_fqdn }}:3100/ready"
+        status_code: 200
+      register: loki_check
+      retries: 3
+      delay: 5
+      until: loki_check.status == 200
+
+    - name: Verify Prometheus remote_write endpoint is reachable on new host
+      ansible.builtin.uri:
+        url: "http://{{ new_fqdn }}:9090/-/ready"
+        status_code: 200
+      register: prom_check
+      retries: 3
+      delay: 5
+      until: prom_check.status == 200
+
+    - name: Migration complete
+      ansible.builtin.debug:
+        msg:
+          - "✓ Loki reachable at http://{{ new_fqdn }}:3100"
+          - "✓ Prometheus reachable at http://{{ new_fqdn }}:9090"
+          - "Fleet migration complete. Monitor Grafana for ingestion gaps."

@@ -1,0 +1,1454 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "ups-nut",
+    "annotations": {
+      "grafana.app/folder": "ffhspqhvdw64gb"
+    }
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "query": {
+            "kind": "DataQuery",
+            "group": "grafana",
+            "version": "v0",
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "spec": {}
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "builtIn": true
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "Power Source",
+          "description": "OB flag. Note: during an outage the EcoFlow feeds the UPS clean 120V for ~4h, so this stays ON LINE until the EcoFlow is exhausted \u2014 NUT cannot see the EcoFlow phase.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_ups_status{job=\"nut\", ups=\"ups\", status=\"OB\"}",
+                        "legendFormat": ""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "ON LINE",
+                          "color": "green",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "ON BATTERY",
+                          "color": "red",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "id": 2,
+          "title": "Low Battery Flag",
+          "description": "Computed LB (ignorelb active): asserts under 15% charge or <120s runtime. If this shows ASSERTED while Power Source is ON LINE, the CyberPower phantom-LB bug is back.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_ups_status{job=\"nut\", ups=\"ups\", status=\"LB\"}",
+                        "legendFormat": ""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "CLEAR",
+                          "color": "green",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "LB ASSERTED",
+                          "color": "red",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "id": 3,
+          "title": "FSD",
+          "description": "Forced shutdown broadcast to all slaves (pve-01, synology, truenas, backup).",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_ups_status{job=\"nut\", ups=\"ups\", status=\"FSD\"}",
+                        "legendFormat": ""
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [
+                    {
+                      "type": "value",
+                      "options": {
+                        "0": {
+                          "text": "\u2014",
+                          "color": "green",
+                          "index": 0
+                        },
+                        "1": {
+                          "text": "FLEET SHUTDOWN",
+                          "color": "red",
+                          "index": 1
+                        }
+                      }
+                    }
+                  ],
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "id": 4,
+          "title": "Battery Charge",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_battery_charge{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "charge"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 0.5,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 0.8,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "id": 5,
+          "title": "Projected Runtime",
+          "description": "Budget: 120s debounce + 300s offdelay \u2248 420s needed for a fully graceful landing. Green means comfortable margin.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_battery_runtime_seconds{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "runtime"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "center",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {
+                  "titleSize": 11,
+                  "valueSize": 18
+                },
+                "textMode": "value",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "mappings": [],
+                  "unit": "s",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "red"
+                      },
+                      {
+                        "value": 300,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 480,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "No Data"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "id": 6,
+          "title": "Load",
+          "description": "Of 510W nominal. Runs lower when pve-10 is off.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_load{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "load"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "gauge",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "barShape": "flat",
+                "barWidthFactor": 0.5,
+                "effects": {
+                  "barGlow": false,
+                  "centerGlow": false,
+                  "gradient": false
+                },
+                "endpointMarker": "point",
+                "minVizHeight": 75,
+                "minVizWidth": 75,
+                "orientation": "auto",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "segmentCount": 1,
+                "segmentSpacing": 0.3,
+                "shape": "gauge",
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true,
+                "sizing": "auto",
+                "sparkline": false,
+                "textMode": "auto"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "min": 0,
+                  "max": 1,
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 0.6,
+                        "color": "yellow"
+                      },
+                      {
+                        "value": 0.8,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "noValue": "N/A"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "id": 7,
+          "title": "Charge & Load",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_battery_charge{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "charge"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_load{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "load"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percentunit",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "min": 0,
+                  "max": 1
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "Projected Runtime",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_battery_runtime_seconds{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "runtime"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_battery_runtime_low_seconds{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "LB threshold"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "s",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "min": 0
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byRegexp",
+                      "options": "LB threshold"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.lineStyle",
+                        "value": {
+                          "fill": "dash",
+                          "dash": [
+                            10,
+                            10
+                          ]
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "id": 9,
+          "title": "Voltages",
+          "description": "Input dips/sags show grid quality. Battery on right axis (12V nominal). Input at a rock-steady 120V during a known outage = running on the EcoFlow.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_input_voltage_volts{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "input"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_output_voltage_volts{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "output"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_battery_voltage_volts{job=\"nut\", ups=\"ups\"}",
+                        "legendFormat": "battery"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "volt",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "battery"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "right"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "id": 10,
+          "title": "Power Events Timeline",
+          "description": "0/1 flags over time. Any OB blip appears here even if it never reached the 120s debounce.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_ups_status{job=\"nut\", ups=\"ups\", status=\"OB\"}",
+                        "legendFormat": "on battery"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_ups_status{job=\"nut\", ups=\"ups\", status=\"LB\"}",
+                        "legendFormat": "low battery"
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "bfhbxxvpurdoge"
+                      },
+                      "spec": {
+                        "expr": "nut_ups_status{job=\"nut\", ups=\"ups\", status=\"FSD\"}",
+                        "legendFormat": "FSD"
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.0.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "fillOpacity": 15,
+                "legend": {
+                  "calcs": [
+                    "lastNotNull",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "lineWidth": 2,
+                "pointSize": 3,
+                "showPoints": "auto",
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "stepAfter",
+                    "lineWidth": 2,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "min": 0,
+                  "max": 1.2
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 0,
+              "width": 4,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 4,
+              "y": 0,
+              "width": 4,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-2"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 8,
+              "y": 0,
+              "width": 3,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-3"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 11,
+              "y": 0,
+              "width": 5,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-4"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 16,
+              "y": 0,
+              "width": 4,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 20,
+              "y": 0,
+              "width": 4,
+              "height": 5,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 5,
+              "width": 8,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 8,
+              "y": 5,
+              "width": 8,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-8"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 16,
+              "y": 5,
+              "width": 8,
+              "height": 9,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-9"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 0,
+              "y": 14,
+              "width": 24,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-10"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "homelab",
+      "ups",
+      "nut",
+      "power"
+    ],
+    "timeSettings": {
+      "timezone": "browser",
+      "from": "now-24h",
+      "to": "now",
+      "autoRefresh": "30s",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "hideTimepicker": false,
+      "fiscalYearStartMonth": 0
+    },
+    "title": "UPS \u2014 NUT",
+    "variables": []
+  }
+}

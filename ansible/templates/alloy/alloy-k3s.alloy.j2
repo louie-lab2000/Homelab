@@ -1,0 +1,107 @@
+// Grafana Alloy config — K3s nodes (node-1, node-2, node-3)
+// Replaces: promtail + prometheus-node-exporter
+// Metrics → pushed to Prometheus via remote_write
+// Logs    → pushed to Loki directly
+
+// ============================================================
+// METRICS (replaces node_exporter)
+// ============================================================
+
+prometheus.exporter.unix "node" {}
+
+prometheus.scrape "node" {
+  targets         = prometheus.exporter.unix.node.targets
+  forward_to      = [prometheus.relabel.add_labels.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.relabel "add_labels" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = "{{ ansible_hostname }}"
+  }
+  rule {
+    target_label = "group"
+    replacement  = "k3s"
+  }
+}
+
+prometheus.remote_write "prometheus" {
+  endpoint {
+    url = "{{ prometheus_url }}"
+    queue_config {
+      capacity             = 10000
+      max_shards           = 4
+      max_samples_per_send = 2000
+      batch_send_deadline  = "30s"
+    }
+  }
+  wal {
+    truncate_frequency = "2h"
+    min_keepalive_time = "6h"   // hold WAL data for 6h minimum
+    max_keepalive_time = "24h"  // discard after 24h if still undelivered
+  }
+}
+
+// ============================================================
+// LOGS (replaces promtail)
+// ============================================================
+
+local.file_match "varlogs" {
+  path_targets = [{
+    __path__ = "/var/log/*.log",
+    job      = "varlogs",
+    host     = "{{ ansible_hostname }}",
+  }]
+}
+
+local.file_match "k3s_logs" {
+  path_targets = [{
+    __path__ = "/var/log/k3s*.log",
+    job      = "k3s",
+    host     = "{{ ansible_hostname }}",
+  }]
+}
+
+loki.source.file "varlogs" {
+  targets    = local.file_match.varlogs.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.source.file "k3s_logs" {
+  targets    = local.file_match.k3s_logs.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.source.journal "journal" {
+  max_age    = "12h"
+  forward_to = [loki.write.default.receiver]
+  labels = {
+    job  = "systemd-journal",
+    host = "{{ ansible_hostname }}",
+  }
+  relabel_rules = loki.relabel.journal.rules
+}
+
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "priority"
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url                 = "{{ loki_url }}"
+    min_backoff_period  = "1s"
+    max_backoff_period  = "5m"
+    max_backoff_retries = 0    // retry forever, never drop batches
+  }
+}

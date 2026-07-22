@@ -4,6 +4,13 @@ services:
     container_name: prometheus
     ports:
       - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-remote-write-receiver        # Required for Alloy push
+      - --web.enable-lifecycle                    # Required for hot-reload via /-/reload
     volumes:
       - /home/louie/grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - /home/louie/grafana/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
@@ -13,6 +20,7 @@ services:
         volume:
           nocopy: true
     restart: unless-stopped
+
   alertmanager:
     image: prom/alertmanager:latest
     container_name: alertmanager
@@ -29,6 +37,7 @@ services:
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
+
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -43,11 +52,15 @@ services:
         volume:
           nocopy: true
     restart: unless-stopped
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
       - "3000:3000"
+    environment:
+      - GF_SERVER_ROOT_URL=https://grafana.louielab.cc
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
     volumes:
       - type: volume
         source: grafana_data
@@ -59,6 +72,7 @@ services:
       - loki
       - alertmanager
     restart: unless-stopped
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: cadvisor
@@ -70,28 +84,40 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     restart: unless-stopped
+
+  snmp-exporter:
+    image: prom/snmp-exporter:latest
+    container_name: snmp-exporter
+    restart: unless-stopped
+    ports:
+      - "9116:9116"
+    volumes:
+      - /home/louie/grafana/snmp.yml:/etc/snmp_exporter/snmp.yml:ro
+    command:
+      - --config.file=/etc/snmp_exporter/snmp.yml
+
 volumes:
   alertmanager_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
-      device: ":/volume1/Grafana-Alertmanager"
+      o: "vers=4.1,addr=192.168.3.33,nconnect=4,noatime,timeo=300"
+      device: ":/mnt/fast/grafana/alertmanager"
   prometheus_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
-      device: ":/volume1/Grafana-Prometheus"
+      o: "vers=4.1,addr=192.168.3.33,nconnect=4,noatime,timeo=300"
+      device: ":/mnt/fast/grafana/prometheus"
   loki_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
-      device: ":/volume1/Grafana-Loki"
+      o: "vers=4.1,addr=192.168.3.33,nconnect=4,noatime,timeo=300"
+      device: ":/mnt/fast/grafana/loki"
   grafana_data:
     driver: local
     driver_opts:
       type: nfs
-      o: "vers=4,addr=192.168.3.3,nconnect=4,noatime,soft,timeo=30"
-      device: ":/volume1/Grafana-Data"
+      o: "vers=4.1,addr=192.168.3.33,nconnect=4,noatime,timeo=300"
+      device: ":/mnt/fast/grafana/data"
