@@ -1,16 +1,14 @@
+# Reconstructed 2026-07-22 from docker inspect of running containers
+# after accidental deletion. Volume defs match pre-existing NFS volumes
+# (project name "grafana" -> grafana_prometheus_data etc.)
+
 services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+    restart: unless-stopped
     ports:
       - "9090:9090"
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --web.console.libraries=/usr/share/prometheus/console_libraries
-      - --web.console.templates=/usr/share/prometheus/consoles
-      - --web.enable-remote-write-receiver        # Required for Alloy push
-      - --web.enable-lifecycle                    # Required for hot-reload via /-/reload
     volumes:
       - /home/louie/grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - /home/louie/grafana/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
@@ -19,7 +17,13 @@ services:
         target: /prometheus
         volume:
           nocopy: true
-    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-remote-write-receiver        # Required for Alloy push
+      - --web.enable-lifecycle                    # Required for hot-reload via /-/reload
 
   alertmanager:
     image: prom/alertmanager:latest
@@ -29,6 +33,7 @@ services:
       - "9093:9093"
     volumes:
       - /home/louie/grafana/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - /home/louie/grafana/secrets:/etc/alertmanager/secrets:ro
       - type: volume
         source: alertmanager_data
         target: /alertmanager
@@ -41,6 +46,7 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: loki
+    restart: unless-stopped
     ports:
       - "3100:3100"
     command: "-config.file=/etc/loki/config.yml"
@@ -51,16 +57,21 @@ services:
         target: /loki
         volume:
           nocopy: true
-    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - GF_SERVER_ROOT_URL=https://grafana.louielab.cc
       - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_FEATURE_TOGGLES_ENABLE=kubernetesDashboards=false
+      - GF_RBAC_PERMISSION_CACHE=false
     volumes:
       - type: volume
         source: grafana_data
@@ -71,19 +82,25 @@ services:
       - prometheus
       - loki
       - alertmanager
-    restart: unless-stopped
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    image: ghcr.io/google/cadvisor:0.55.1
     container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
     ports:
       - "8080:8080"
     volumes:
       - /:/rootfs:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-    restart: unless-stopped
+      - /dev/disk/:/dev/disk:ro
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
 
   snmp-exporter:
     image: prom/snmp-exporter:latest
@@ -95,6 +112,22 @@ services:
       - /home/louie/grafana/snmp.yml:/etc/snmp_exporter/snmp.yml:ro
     command:
       - --config.file=/etc/snmp_exporter/snmp.yml
+
+  blackbox_exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    restart: unless-stopped
+    ports:
+      - "9115:9115"
+    volumes:
+      - /home/louie/grafana/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+
+  nut-exporter:
+    image: hon95/prometheus-nut-exporter:1
+    container_name: nut-exporter
+    restart: unless-stopped
 
 volumes:
   alertmanager_data:

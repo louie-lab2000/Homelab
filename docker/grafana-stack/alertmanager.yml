@@ -1,18 +1,58 @@
+# =============================================================================
+# alertmanager.yml - louielab alert delivery
+# Rewritten 2026-07-05 (Phase 2 redesign)
+#
+# Changes from prior version:
+#   1. SMTP password moved OUT of this file into a secret file
+#      (rotate the Yahoo app password when deploying; the old one has
+#      been committed to git and must be considered burned).
+#   2. group_by now includes instance, so "HighCPU on docker" and
+#      "HighCPU on pve-01" arrive as separate emails.
+#   3. Severity-based repeat: criticals renag every 3h, warnings only
+#      once per 24h.
+#   4. Inhibition: a critical on a host suppresses warnings on the same
+#      host; HostDown suppresses that host's container alerts.
+# =============================================================================
+
 global:
   resolve_timeout: 5m
   smtp_smarthost: 'smtp.mail.yahoo.com:587'
   smtp_from: 'lperugini@yahoo.com'
   smtp_auth_username: 'lperugini@yahoo.com'
-  smtp_auth_password: 'wkhqwjhwblowbcps'
+  smtp_auth_password_file: /etc/alertmanager/secrets/smtp_password
   smtp_require_tls: true
+
 route:
-  receiver: email-team
-  group_by: ['alertname']
+  receiver: email-louie
+  group_by: ['alertname', 'instance']
   group_wait: 30s
   group_interval: 5m
-  repeat_interval: 3h
+  repeat_interval: 3h        # default applies to criticals
+  routes:
+    # Warnings inherit the email receiver but only repeat daily.
+    - matchers:
+        - severity = "warning"
+      repeat_interval: 24h
+
+inhibit_rules:
+  # A critical alert on an instance silences warnings on that instance.
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ['instance']
+
+  # If the docker host itself is down, individual container alerts are
+  # redundant noise. HostDown carries instance="docker" (or
+  # "docker-gpu"), matching the cAdvisor instance label.
+  - source_matchers:
+      - alertname = "HostDown"
+    target_matchers:
+      - alertname =~ "ContainerDown|WifeCriticalContainerMissing|GPUStackContainerDown"
+    equal: ['instance']
+
 receivers:
-  - name: email-team
+  - name: email-louie
     email_configs:
       - to: 'lperugini@yahoo.com'
         send_resolved: true

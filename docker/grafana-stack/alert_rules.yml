@@ -1,56 +1,324 @@
+# =============================================================================
+# alert_rules.yml - louielab alerting
+# Rewritten 2026-07-05 (Phase 2 redesign)
+#
+# Design principles:
+#   1. Explicit instance allowlist. Alerting covers exactly six instances:
+#      pve-01, backup, docker, docker-gpu, truenas, foodblog.
+#      New/experimental hosts can never page by accident.
+#   2. TrueNAS storage health (ZFS pools, SMART) is handled by TrueNAS
+#      native email alerts, NOT here. Prometheus covers TrueNAS
+#      reachability, CPU, and ARC-aware memory only.
+#   3. Synology is covered by Active Insight. No rules here.
+#   4. pfSense: dashboards only, no alerts (total failure self-announces).
+#   5. severity: critical = act now; warning = look at it today.
+# =============================================================================
+
 groups:
-  - name: infrastructure
+
+  # ===========================================================================
+  # HOST AVAILABILITY
+  # ===========================================================================
+  - name: availability
     rules:
-      # CPU > 90% for 5 minutes
+      # Alloy hosts push via remote_write, so there is no "up" metric.
+      # absent() on a per-instance selector detects when a host stops
+      # reporting. One rule per instance; absent() cannot be grouped.
+      - alert: HostDown
+        expr: absent(node_uname_info{instance="pve-01"})
+        for: 5m
+        labels:
+          severity: critical
+          host: pve-01
+        annotations:
+          summary: "pve-01 stopped reporting metrics"
+          description: "No node metrics from pve-01 for 5+ minutes. Host or Alloy is down."
+
+      # Self-referential: if backup (this host) dies entirely, nothing
+      # delivers this. It exists to catch Alloy dead / Prometheus alive.
+      - alert: HostDown
+        expr: absent(node_uname_info{instance="backup"})
+        for: 5m
+        labels:
+          severity: critical
+          host: backup
+        annotations:
+          summary: "backup stopped reporting metrics"
+          description: "No node metrics from backup for 5+ minutes. Alloy is down (Prometheus itself is evidently still alive)."
+
+      - alert: HostDown
+        expr: absent(node_uname_info{instance="docker"})
+        for: 5m
+        labels:
+          severity: critical
+          host: docker
+        annotations:
+          summary: "docker stopped reporting metrics"
+          description: "No node metrics from docker for 5+ minutes. All wife-critical stacks live here."
+
+      - alert: HostDown
+        expr: absent(node_uname_info{instance="docker-gpu"})
+        for: 5m
+        labels:
+          severity: critical
+          host: docker-gpu
+        annotations:
+          summary: "docker-gpu stopped reporting metrics"
+          description: "No node metrics from docker-gpu for 5+ minutes."
+
+      - alert: HostDown
+        expr: absent(node_uname_info{instance="foodblog"})
+        for: 5m
+        labels:
+          severity: critical
+          host: foodblog
+        annotations:
+          summary: "foodblog stopped reporting metrics"
+          description: "No node metrics from the leeannperugini.com VM for 5+ minutes."
+
+      # TrueNAS is pull-scraped, so the standard up metric applies.
+      - alert: TrueNASDown
+        expr: up{job="truenas"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TrueNAS is not responding to scrapes"
+          description: "node_exporter on truenas unreachable for 5+ minutes. NFS/iSCSI storage may be at risk."
+
+  # ===========================================================================
+  # RESOURCE PRESSURE (allowlisted instances only)
+  # ===========================================================================
+  - name: resources
+    rules:
       - alert: HighCPU
-        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        expr: >
+          100 - (avg by (instance) (
+            rate(node_cpu_seconds_total{mode="idle",
+              instance=~"pve-01|backup|docker|docker-gpu|foodblog|truenas"}[5m])
+          ) * 100) > 90
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High CPU on {{ $labels.instance }}"
           description: "CPU usage is {{ printf \"%.1f\" $value }}%"
-      # RAM > 85% for 5 minutes
+
+      # Non-ZFS hosts. TrueNAS handled by the ARC-aware rule below.
       - alert: HighMemory
-        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        expr: >
+          (1 - (
+            node_memory_MemAvailable_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog"}
+            / node_memory_MemTotal_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog"}
+          )) * 100 > 85
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High memory on {{ $labels.instance }}"
           description: "Memory usage is {{ printf \"%.1f\" $value }}%"
-      # Temperature > 80C (AMD k10temp)
-      - alert: HighTemperature
-        expr: node_hwmon_temp_celsius{chip=~".*k10temp.*|.*coretemp.*"} > 80
-        for: 1m
+
+      # ZFS ARC-aware memory rule for TrueNAS (ARC counts as reclaimable).
+      # Preserved from the live 2026-05-06 file.
+      - alert: HighMemoryZFS
+        expr: >
+          (1 - (
+            (node_memory_MemAvailable_bytes{job="truenas"} + node_zfs_arc_size{job="truenas"})
+            / node_memory_MemTotal_bytes{job="truenas"}
+          )) * 100 > 85
+        for: 5m
         labels:
-          severity: critical
+          severity: warning
         annotations:
-          summary: "High temperature on {{ $labels.instance }}"
-          description: "CPU temperature is {{ printf \"%.1f\" $value }}°C"
-      # Swap usage > 20% for 5 minutes
+          summary: "High memory on {{ $labels.instance }} (ZFS-aware)"
+          description: "Memory usage (excluding ARC) is {{ printf \"%.1f\" $value }}%"
+
       - alert: HighSwapUsage
-        expr: (1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 20
+        expr: >
+          (1 - (
+            node_memory_SwapFree_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog"}
+            / node_memory_SwapTotal_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog"}
+          )) * 100 > 20
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High swap usage on {{ $labels.instance }}"
           description: "Swap usage is {{ printf \"%.1f\" $value }}%"
-  - name: containers
-    rules:
-      # Critical containers down
-      - alert: ContainerDown
-        expr: absent(container_last_seen{name=~"nginx|uptime-kuma|vaultwarden", instance="docker-edge"}) or (time() - container_last_seen{name=~"nginx|uptime-kuma|vaultwarden", instance="docker-edge"}) > 60
+
+      # Explicit per-host sensor selectors. The old chip regex
+      # (k10temp|coretemp) silently matched nothing on pve-01 because
+      # its hwmon chip label is the PCI path.
+      - alert: HighTemperature
+        expr: >
+          node_hwmon_temp_celsius{instance="pve-01", chip="pci0000:00_0000:00:18_3", sensor="temp3"} > 80
+          or
+          node_hwmon_temp_celsius{instance="backup", chip="platform_coretemp_0", sensor="temp1"} > 80
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Container {{ $labels.name }} is down"
-          description: "Container {{ $labels.name }} on docker-edge is not running"
+          summary: "High temperature on {{ $labels.instance }}"
+          description: "CPU temperature is {{ printf \"%.1f\" $value }}C"
+
+  # ===========================================================================
+  # DISK (Alloy hosts only; TrueNAS storage is native-alerted)
+  # ===========================================================================
+  - name: disk
+    rules:
+      - alert: DiskSpaceLow
+        expr: >
+          (1 - (
+            node_filesystem_avail_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+              mountpoint="/", fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+              mountpoint="/", fstype!~"tmpfs|overlay"}
+          )) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem above 85% on {{ $labels.instance }}"
+          description: "Root FS usage is {{ printf \"%.1f\" $value }}%"
+
+      - alert: DiskSpaceCritical
+        expr: >
+          (1 - (
+            node_filesystem_avail_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+              mountpoint="/", fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+              mountpoint="/", fstype!~"tmpfs|overlay"}
+          )) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Root filesystem above 95% on {{ $labels.instance }}"
+          description: "Root FS usage is {{ printf \"%.1f\" $value }}%. Services will start failing."
+
+      # Fill-rate prediction: catches the runaway log/data partition
+      # before the threshold rules do. Only fires if the FS is already
+      # more than 60% full, to suppress noise from bursty-but-harmless
+      # writes on mostly-empty disks.
+      - alert: DiskFillPredicted
+        expr: >
+          predict_linear(node_filesystem_avail_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+            mountpoint="/", fstype!~"tmpfs|overlay"}[6h], 24 * 3600) < 0
+          and
+          (node_filesystem_avail_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+            mountpoint="/", fstype!~"tmpfs|overlay"}
+           / node_filesystem_size_bytes{instance=~"pve-01|backup|docker|docker-gpu|foodblog",
+            mountpoint="/", fstype!~"tmpfs|overlay"}) < 0.4
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem on {{ $labels.instance }} predicted full within 24h"
+          description: "At the current 6h fill rate, / on {{ $labels.instance }} runs out of space within 24 hours."
+
+  # ===========================================================================
+  # CONTAINERS (via docker-metrics.sh textfile collector on docker and
+  # docker-gpu, shipped through Alloy remote_write)
+  #
+  # History: cAdvisor cannot produce per-container metrics on Docker 29
+  # with the containerd image store, and docker_exporter's API client is
+  # too old for Docker 29 (400s). Final design (2026-07-14): a systemd
+  # timer runs docker-metrics.sh every 30s, writing
+  # docker_container_running{name=...} (1 = running) to the node
+  # exporter textfile directory; Alloy collects and pushes it. The
+  # instance label is applied by Alloy's relabel stage like all other
+  # node metrics from these hosts.
+  #
+  # Container names verified against docker ps 2026-07-05:
+  #   docker:     vaultwarden, joplin, joplin-db, postgres-linkwarden,
+  #               meilisearch, nginx (NPM), uptime-kuma
+  #   docker-gpu: ollama, open-webui
+  #
+  # 2026-07-14: linkwarden confirmed as the app container name (it was
+  # down, unnoticed, during the 07-05 inventory) and added to coverage.
+  # ===========================================================================
+  - name: containers
+    rules:
+      # Layer 1: container exists but is not running.
+      - alert: ContainerDown
+        expr: >
+          docker_container_running{instance="docker",
+            name=~"vaultwarden|joplin|joplin-db|linkwarden|postgres-linkwarden|meilisearch|nginx|uptime-kuma"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} is not running on {{ $labels.instance }}"
+          description: "docker reports {{ $labels.name }} in a non-running state."
+
+      # Layer 2: container removed entirely (series disappears, so
+      # layer 1 goes blind). Explicit absent() per wife-critical app.
+      - alert: WifeCriticalContainerMissing
+        expr: absent(docker_container_running{instance="docker", name="vaultwarden"})
+        for: 5m
+        labels:
+          severity: critical
+          container: vaultwarden
+        annotations:
+          summary: "vaultwarden container has vanished"
+          description: "No series for vaultwarden on docker. Removed, renamed, or the metrics pipeline is down."
+
+      - alert: WifeCriticalContainerMissing
+        expr: absent(docker_container_running{instance="docker", name="joplin"})
+        for: 5m
+        labels:
+          severity: critical
+          container: joplin
+        annotations:
+          summary: "joplin container has vanished"
+          description: "No series for joplin on docker. Removed, renamed, or the metrics pipeline is down."
+
+      # (Resolved 2026-07-14: the app container IS named "linkwarden"; it
+      # was simply not running during the 2026-07-05 inventory. It had
+      # been down for days with nothing alerting, which is precisely the
+      # failure mode this rule exists to catch.)
+      - alert: WifeCriticalContainerMissing
+        expr: absent(docker_container_running{instance="docker", name="linkwarden"})
+        for: 5m
+        labels:
+          severity: critical
+          container: linkwarden
+        annotations:
+          summary: "linkwarden container has vanished"
+          description: "No series for linkwarden on docker. Removed, renamed, or the metrics pipeline is down."
+
+      # GPU stack: warning, not critical. Ollama going down is an
+      # inconvenience, not a household incident.
+      - alert: GPUStackContainerDown
+        expr: >
+          docker_container_running{instance="docker-gpu", name=~"ollama|open-webui"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} is not running on docker-gpu"
+          description: "docker reports {{ $labels.name }} in a non-running state."
+
+      # Freshness guard: if the timer or script dies, the .prom file
+      # goes stale and every rule above quietly reports old truth.
+      # node_textfile_mtime_seconds is exported by the textfile
+      # collector itself.
+      - alert: DockerMetricsStale
+        expr: >
+          (time() - node_textfile_mtime_seconds{instance=~"docker|docker-gpu",
+            file="docker_containers.prom"}) > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container metrics stale on {{ $labels.instance }}"
+          description: "docker_containers.prom has not been updated for over 5 minutes. Check the docker-metrics timer."
+
+  # ===========================================================================
+  # WEB / SYNTHETIC (leeannperugini.com)
+  # ===========================================================================
   - name: web
     rules:
-      # Website down or slow
       - alert: WebsiteDown
         expr: probe_success{job="blackbox_http"} == 0
         for: 2m
@@ -59,11 +327,42 @@ groups:
         annotations:
           summary: "Website {{ $labels.instance }} is down"
           description: "HTTP probe failed for {{ $labels.instance }}"
+
+      # Fixed: probe_http_duration_seconds is per-phase and never
+      # exceeded 3s even on a dying site. probe_duration_seconds is
+      # the total.
       - alert: WebsiteSlow
-        expr: probe_http_duration_seconds{job="blackbox_http"} > 3
-        for: 2m
+        expr: probe_duration_seconds{job="blackbox_http"} > 3
+        for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Website {{ $labels.instance }} is slow"
-          description: "Response time is {{ printf \"%.2f\" $value }}s"
+          description: "Total probe time is {{ printf \"%.2f\" $value }}s"
+
+      - alert: SSLCertExpiring
+        expr: (probe_ssl_earliest_cert_expiry{job="blackbox_http"} - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL cert for {{ $labels.instance }} expires in under 14 days"
+          description: "{{ printf \"%.1f\" $value }} days remaining. Check Cloudflare/origin cert renewal."
+
+      - alert: WPBackupFailed
+        expr: wp_backup_success{instance="foodblog"} == 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "leeannperugini.com backup failed"
+          description: "wp_backup_success reports failure on the last run."
+
+      - alert: WPBackupStale
+        expr: wp_backup_age_hours{instance="foodblog"} > 192
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "leeannperugini.com backup is stale"
+          description: 'Last successful backup was {{ printf "%.0f" $value }} hours ago (threshold 192h / 8 days).'
